@@ -30,6 +30,42 @@ async function bootstrapData() {
 
   await ensureColumn("users", "phone", "VARCHAR(30) NULL");
   await ensureColumn("users", "avatar_url", "VARCHAR(500) NULL");
+  await ensureColumn("users", "full_name", "VARCHAR(150) NULL");
+  await ensureColumn("users", "password_hash", "VARCHAR(255) NULL");
+
+  const [legacyNameColumn] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'users'
+       AND COLUMN_NAME = 'name'`
+  );
+  if (legacyNameColumn.length > 0) {
+    await pool.query(
+      `UPDATE users
+       SET full_name = CASE
+         WHEN full_name IS NULL OR full_name = '' THEN name
+         ELSE full_name
+       END`
+    );
+  }
+
+  const [legacyPasswordColumn] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'users'
+       AND COLUMN_NAME = 'password'`
+  );
+  if (legacyPasswordColumn.length > 0) {
+    await pool.query(
+      `UPDATE users
+       SET password_hash = CASE
+         WHEN password_hash IS NULL OR password_hash = '' THEN password
+         ELSE password_hash
+       END`
+    );
+  }
 
   await pool.query(
     `CREATE TABLE IF NOT EXISTS spaces (
@@ -81,6 +117,9 @@ async function bootstrapData() {
     )`
   );
 
+  await ensureColumn("services", "pricing_type", "ENUM('per_booking', 'per_slot') NOT NULL DEFAULT 'per_booking'");
+  await ensureColumn("services", "is_active", "TINYINT(1) NOT NULL DEFAULT 1");
+
   await pool.query(
     `CREATE TABLE IF NOT EXISTS bookings (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -98,6 +137,25 @@ async function bootstrapData() {
 
   await ensureColumn("bookings", "total_amount", "DECIMAL(12,2) NOT NULL DEFAULT 0");
   await ensureColumn("bookings", "service_amount", "DECIMAL(12,2) NOT NULL DEFAULT 0");
+  await ensureColumn("bookings", "note", "VARCHAR(500) NULL");
+  await ensureColumn("bookings", "space_id", "INT NULL");
+
+  const [workspaceIdColumn] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'bookings'
+       AND COLUMN_NAME = 'workspace_id'`
+  );
+  if (workspaceIdColumn.length > 0) {
+    await pool.query(
+      `UPDATE bookings
+       SET space_id = CASE
+         WHEN space_id IS NULL THEN workspace_id
+         ELSE space_id
+       END`
+    );
+  }
 
   await pool.query(
     `CREATE TABLE IF NOT EXISTS booking_slots (
@@ -113,6 +171,10 @@ async function bootstrapData() {
     )`
   );
 
+  await ensureColumn("booking_slots", "unit_count", "INT NOT NULL DEFAULT 1");
+  await ensureColumn("booking_slots", "slot_price", "DECIMAL(12,2) NOT NULL DEFAULT 0");
+  await ensureColumn("booking_slots", "reminder_sent_at", "DATETIME NULL");
+
   await pool.query(
     `CREATE TABLE IF NOT EXISTS booking_services (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -126,6 +188,24 @@ async function bootstrapData() {
       CONSTRAINT fk_booking_services_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
     )`
   );
+
+  await ensureColumn("booking_services", "unit_price", "DECIMAL(12,2) NOT NULL DEFAULT 0");
+  await ensureColumn("booking_services", "total_price", "DECIMAL(12,2) NOT NULL DEFAULT 0");
+
+  const [legacyBookingServicePriceColumn] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'booking_services'
+       AND COLUMN_NAME = 'price'`
+  );
+  if (legacyBookingServicePriceColumn.length > 0) {
+    await pool.query(
+      `UPDATE booking_services
+       SET unit_price = CASE WHEN unit_price = 0 THEN price ELSE unit_price END,
+           total_price = CASE WHEN total_price = 0 THEN price * COALESCE(quantity, 1) ELSE total_price END`
+    );
+  }
 
   await pool.query(
     `CREATE TABLE IF NOT EXISTS chat_rooms (
@@ -178,26 +258,50 @@ async function bootstrapData() {
     )`
   );
 
-  const [userCountRows] = await pool.query("SELECT COUNT(*) AS count FROM users");
-  if (userCountRows[0].count === 0) {
-    const adminPassword = await bcrypt.hash("123456", 10);
-    const userPassword = await bcrypt.hash("123456", 10);
+  await ensureColumn("notifications", "message", "TEXT NULL");
+  await ensureColumn("notifications", "metadata_json", "JSON NULL");
 
+  const [legacyContentColumn] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'notifications'
+       AND COLUMN_NAME = 'content'`
+  );
+  if (legacyContentColumn.length > 0) {
     await pool.query(
-      `INSERT INTO users (full_name, email, password_hash, role, phone)
-       VALUES (?, ?, ?, 'admin', ?), (?, ?, ?, 'user', ?)`,
-      [
-        "Admin System",
-        "admin@space.com",
-        adminPassword,
-        "0909000001",
-        "Nguyen Van User",
-        "user@space.com",
-        userPassword,
-        "0909000002"
-      ]
+      `UPDATE notifications
+       SET message = CASE
+         WHEN message IS NULL OR message = '' THEN content
+         ELSE message
+       END`
     );
   }
+
+  const adminPassword = await bcrypt.hash("123456", 10);
+  const userPassword = await bcrypt.hash("123456", 10);
+
+  await pool.query(
+    `INSERT INTO users (full_name, email, password_hash, role, phone)
+     VALUES (?, ?, ?, 'admin', ?)
+     ON DUPLICATE KEY UPDATE
+       full_name = VALUES(full_name),
+       password_hash = VALUES(password_hash),
+       role = 'admin',
+       phone = COALESCE(phone, VALUES(phone))`,
+    ["Admin System", "admin@space.com", adminPassword, "0909000001"]
+  );
+
+  await pool.query(
+    `INSERT INTO users (full_name, email, password_hash, role, phone)
+     VALUES (?, ?, ?, 'user', ?)
+     ON DUPLICATE KEY UPDATE
+       full_name = VALUES(full_name),
+       password_hash = VALUES(password_hash),
+       role = 'user',
+       phone = COALESCE(phone, VALUES(phone))`,
+    ["Nguyen Van User", "user@space.com", userPassword, "0909000002"]
+  );
 
   const [spaceCountRows] = await pool.query("SELECT COUNT(*) AS count FROM spaces");
   if (spaceCountRows[0].count === 0) {

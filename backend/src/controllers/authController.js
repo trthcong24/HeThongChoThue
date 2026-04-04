@@ -17,7 +17,7 @@ async function register(req, res, next) {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'user')",
+      "INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, 'user')",
       [fullName, email, passwordHash]
     );
 
@@ -42,7 +42,7 @@ async function login(req, res, next) {
     }
 
     const [rows] = await pool.query(
-      "SELECT id, name, email, password, role FROM users WHERE email = ?",
+      "SELECT id, full_name, email, password_hash, role FROM users WHERE email = ?",
       [email]
     );
 
@@ -51,7 +51,7 @@ async function login(req, res, next) {
     }
 
     const user = rows[0];
-    const matched = await bcrypt.compare(password, user.password);
+    const matched = await bcrypt.compare(password, user.password_hash);
     if (!matched) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
@@ -60,7 +60,7 @@ async function login(req, res, next) {
       id: user.id,
       email: user.email,
       role: user.role,
-      fullName: user.name
+      fullName: user.full_name
     });
 
     return res.json({
@@ -68,7 +68,7 @@ async function login(req, res, next) {
       token,
       user: {
         id: user.id,
-        fullName: user.name,
+        fullName: user.full_name,
         email: user.email,
         role: user.role
       }

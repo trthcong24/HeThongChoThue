@@ -7,16 +7,20 @@ const { createNotification } = require("../services/notificationService");
 async function getAllSpaces(req, res, next) {
   try {
     const [rows] = await pool.query(
-      `SELECT w.*, GROUP_CONCAT(wi.image_url ORDER BY wi.id SEPARATOR '||') AS image_urls
-       FROM workspaces w
-       LEFT JOIN workspace_images wi ON wi.workspace_id = w.id
-       GROUP BY w.id
-       ORDER BY w.created_at DESC`
+      `SELECT id, name, type, location, capacity, price_per_unit, pricing_unit,
+              thumbnail_url, description, latitude, longitude, created_at
+       FROM spaces
+       ORDER BY created_at DESC`
     );
 
     const data = rows.map((row) => ({
       ...row,
-      images: row.image_urls ? row.image_urls.split("||") : []
+      address: row.location,
+      price_per_hour: row.price_per_unit,
+      lat: row.latitude,
+      lng: row.longitude,
+      status: "available",
+      images: row.thumbnail_url ? [row.thumbnail_url] : []
     }));
     return res.json(data);
   } catch (error) {
@@ -50,32 +54,21 @@ async function createSpace(req, res, next) {
     await connection.beginTransaction();
 
     const [result] = await connection.query(
-      `INSERT INTO workspaces
-        (name, type, address, capacity, price_per_hour, description, lat, lng, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO spaces
+        (name, type, location, capacity, price_per_unit, pricing_unit, thumbnail_url, description, latitude, longitude)
+       VALUES (?, ?, ?, ?, ?, 'hour', ?, ?, ?, ?)`,
       [
         name,
         type,
         address,
         capacity,
         pricePerHour,
+        Array.isArray(imageUrls) ? (imageUrls.find((url) => String(url).trim()) || null) : null,
         description || null,
         lat || null,
-        lng || null,
-        status || "available"
+        lng || null
       ]
     );
-
-    const normalizedImageUrls = Array.isArray(imageUrls)
-      ? imageUrls.map((url) => String(url).trim()).filter(Boolean)
-      : [];
-
-    for (const imageUrl of normalizedImageUrls) {
-      await connection.query(
-        "INSERT INTO workspace_images (workspace_id, image_url) VALUES (?, ?)",
-        [result.insertId, imageUrl]
-      );
-    }
 
     await connection.commit();
 
@@ -120,9 +113,9 @@ async function updateSpace(req, res, next) {
     await connection.beginTransaction();
 
     const [result] = await connection.query(
-      `UPDATE workspaces
-       SET name = ?, type = ?, address = ?, capacity = ?, price_per_hour = ?,
-           description = ?, lat = ?, lng = ?, status = ?
+      `UPDATE spaces
+       SET name = ?, type = ?, location = ?, capacity = ?, price_per_unit = ?,
+           thumbnail_url = ?, description = ?, latitude = ?, longitude = ?
        WHERE id = ?`,
       [
         name,
@@ -130,10 +123,10 @@ async function updateSpace(req, res, next) {
         address,
         capacity,
         pricePerHour,
+        Array.isArray(imageUrls) ? (imageUrls.find((url) => String(url).trim()) || null) : null,
         description || null,
         lat || null,
         lng || null,
-        status || "available",
         id
       ]
     );
@@ -141,19 +134,6 @@ async function updateSpace(req, res, next) {
     if (result.affectedRows === 0) {
       await connection.rollback();
       return res.status(404).json({ message: "Space not found" });
-    }
-
-    await connection.query("DELETE FROM workspace_images WHERE workspace_id = ?", [id]);
-
-    const normalizedImageUrls = Array.isArray(imageUrls)
-      ? imageUrls.map((url) => String(url).trim()).filter(Boolean)
-      : [];
-
-    for (const imageUrl of normalizedImageUrls) {
-      await connection.query(
-        "INSERT INTO workspace_images (workspace_id, image_url) VALUES (?, ?)",
-        [id, imageUrl]
-      );
     }
 
     await connection.commit();
@@ -180,7 +160,7 @@ async function updateSpace(req, res, next) {
 
 async function deleteSpace(req, res, next) {
   try {
-    const [result] = await pool.query("DELETE FROM workspaces WHERE id = ?", [req.params.id]);
+    const [result] = await pool.query("DELETE FROM spaces WHERE id = ?", [req.params.id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Space not found" });
@@ -202,7 +182,7 @@ async function deleteSpace(req, res, next) {
 async function getAllUsers(req, res, next) {
   try {
     const [rows] = await pool.query(
-      `SELECT id, name, email, role, phone, avatar, created_at
+      `SELECT id, full_name, email, role, phone, avatar_url, created_at
        FROM users
        ORDER BY created_at DESC`
     );

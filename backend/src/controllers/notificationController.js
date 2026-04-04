@@ -3,7 +3,7 @@ const pool = require("../config/db");
 async function getMyNotifications(req, res, next) {
   try {
     const [rows] = await pool.query(
-      `SELECT id, type, title, content, is_read, created_at
+      `SELECT id, type, title, message, is_read, created_at
        FROM notifications
        WHERE user_id = ?
        ORDER BY created_at DESC
