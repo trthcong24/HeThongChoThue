@@ -21,7 +21,7 @@ function Layout({ children }) {
 
           <nav className="flex flex-wrap items-center gap-2 rounded-full bg-white/50 p-2 shadow-sm">
             <NavLink to="/" className={navClassName}>
-              Home
+              Trang chủ
             </NavLink>
             <NavLink to="/spaces" className={navClassName}>
               Không gian
@@ -31,22 +31,27 @@ function Layout({ children }) {
             </NavLink>
             {isAuthenticated && (
               <NavLink to="/chat" className={navClassName}>
-                Chat
+                Trò chuyện
               </NavLink>
             )}
             {isAuthenticated && (
               <NavLink to="/my-bookings" className={navClassName}>
-                Booking
+                Đặt lịch
+              </NavLink>
+            )}
+            {isAuthenticated && (
+              <NavLink to="/favorites" className={navClassName}>
+                Yêu thích
               </NavLink>
             )}
             {isAuthenticated && (
               <NavLink to="/profile" className={navClassName}>
-                Profile
+                Hồ sơ
               </NavLink>
             )}
             {isAdmin && (
               <NavLink to="/admin/spaces" className={navClassName}>
-                Admin
+                Quản trị
               </NavLink>
             )}
           </nav>

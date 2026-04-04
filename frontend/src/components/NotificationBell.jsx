@@ -36,7 +36,7 @@ function NotificationBell() {
         onClick={() => setOpen((prev) => !prev)}
         className="relative rounded-full border border-white/40 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur"
       >
-        Thong bao
+        Thông báo
         {unreadCount > 0 && (
           <span className="ml-2 rounded-full bg-orange-500 px-2 py-0.5 text-xs font-semibold text-white">
             {unreadCount}
@@ -47,14 +47,14 @@ function NotificationBell() {
       {open && (
         <div className="absolute right-0 z-30 mt-3 w-80 rounded-3xl border border-orange-100 bg-white p-4 shadow-panel">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-display text-lg font-semibold text-slate-900">Thong bao</h3>
+            <h3 className="font-display text-lg font-semibold text-slate-900">Thông báo</h3>
             <button type="button" className="text-xs text-slate-500" onClick={() => setOpen(false)}>
-              Dong
+              Đóng
             </button>
           </div>
 
           <div className="space-y-3">
-            {items.length === 0 && <p className="text-sm text-slate-500">Chua co thong bao.</p>}
+            {items.length === 0 && <p className="text-sm text-slate-500">Chưa có thông báo.</p>}
             {items.map((item) => (
               <button
                 key={item.id}

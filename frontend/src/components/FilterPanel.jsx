@@ -6,7 +6,7 @@ function FilterPanel({ filters, onChange, onSubmit, onReset }) {
     >
       <input
         className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none ring-0"
-        placeholder="Tu khoa"
+        placeholder="Từ khóa"
         value={filters.keyword}
         onChange={(event) => onChange("keyword", event.target.value)}
       />
@@ -15,15 +15,15 @@ function FilterPanel({ filters, onChange, onSubmit, onReset }) {
         value={filters.type}
         onChange={(event) => onChange("type", event.target.value)}
       >
-        <option value="">Tat ca loai</option>
-        <option value="meeting_room">Phong hop</option>
-        <option value="desk">Ban lam viec</option>
-        <option value="coworking">Coworking</option>
-        <option value="creative_studio">Studio</option>
+        <option value="">Tất cả loại</option>
+        <option value="meeting_room">Phòng họp</option>
+        <option value="desk">Bàn làm việc</option>
+        <option value="coworking">Khu coworking</option>
+        <option value="creative_studio">Studio sáng tạo</option>
       </select>
       <input
         className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
-        placeholder="Vi tri"
+        placeholder="Vị trí"
         value={filters.location}
         onChange={(event) => onChange("location", event.target.value)}
       />
@@ -31,28 +31,28 @@ function FilterPanel({ filters, onChange, onSubmit, onReset }) {
         <input
           type="number"
           className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
-          placeholder="Gia tu"
+          placeholder="Giá từ"
           value={filters.minPrice}
           onChange={(event) => onChange("minPrice", event.target.value)}
         />
         <input
           type="number"
           className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
-          placeholder="Gia den"
+          placeholder="Giá đến"
           value={filters.maxPrice}
           onChange={(event) => onChange("maxPrice", event.target.value)}
         />
       </div>
       <div className="flex gap-3">
         <button type="submit" className="flex-1 rounded-2xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white">
-          Loc
+          Lọc
         </button>
         <button
           type="button"
           onClick={onReset}
           className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
         >
-          Xoa
+          Xóa
         </button>
       </div>
     </form>

@@ -1,11 +1,12 @@
 const pool = require("../config/db");
 const { getSocket } = require("./socket");
 
-async function createNotification({ userId, type, title, content }) {
+async function createNotification({ userId, type, title, message, content, metadata }) {
+  const normalizedMessage = message || content || "";
   const [result] = await pool.query(
-    `INSERT INTO notifications (user_id, type, title, content, is_read)
-     VALUES (?, ?, ?, ?, 0)`,
-    [userId, type, title, content]
+    `INSERT INTO notifications (user_id, type, title, message, metadata_json, is_read)
+     VALUES (?, ?, ?, ?, ?, 0)`,
+    [userId, type, title, normalizedMessage, metadata ? JSON.stringify(metadata) : null]
   );
 
   const notification = {
@@ -13,7 +14,7 @@ async function createNotification({ userId, type, title, content }) {
     user_id: userId,
     type,
     title,
-    content,
+    message: normalizedMessage,
     is_read: 0,
     created_at: new Date().toISOString()
   };

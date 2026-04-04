@@ -3,68 +3,93 @@ const cache = require("../config/cache");
 
 const SPACES_CACHE_KEY = "spaces:list";
 
+function formatSpaceRow(row) {
+  return {
+    ...row,
+    images: row.thumbnail_url ? [row.thumbnail_url] : [],
+    address: row.location,
+    price_per_hour: row.price_per_unit,
+    lat: row.latitude,
+    lng: row.longitude,
+    status: "available"
+  };
+}
+
+async function withFavoriteState(spaces, userId) {
+  const normalizedSpaces = (spaces || []).map((space) => ({
+    ...space,
+    is_favorite: Boolean(space.is_favorite)
+  }));
+
+  if (!userId || normalizedSpaces.length === 0) {
+    return normalizedSpaces;
+  }
+
+  const placeholders = normalizedSpaces.map(() => "?").join(", ");
+  const [rows] = await pool.query(
+    `SELECT space_id FROM favorite_spaces WHERE user_id = ? AND space_id IN (${placeholders})`,
+    [userId, ...normalizedSpaces.map((space) => space.id)]
+  );
+
+  const favoriteIds = new Set(rows.map((row) => Number(row.space_id)));
+  return normalizedSpaces.map((space) => ({
+    ...space,
+    is_favorite: favoriteIds.has(Number(space.id))
+  }));
+}
+
 async function getSpaces(req, res, next) {
   try {
     const cacheKey = `${SPACES_CACHE_KEY}:${JSON.stringify(req.query || {})}`;
     const cached = cache.get(cacheKey);
     if (cached) {
-      return res.json({ data: cached, source: "cache" });
+      const data = await withFavoriteState(cached, req.user?.id);
+      return res.json({ data, source: "cache" });
     }
 
     const filters = [];
     const params = [];
 
     if (req.query.type) {
-      filters.push("w.type = ?");
+      filters.push("s.type = ?");
       params.push(req.query.type);
     }
 
     if (req.query.address || req.query.location) {
-      filters.push("w.address LIKE ?");
+      filters.push("s.location LIKE ?");
       params.push(`%${req.query.address || req.query.location}%`);
     }
 
     if (req.query.minPrice) {
-      filters.push("w.price_per_hour >= ?");
+      filters.push("s.price_per_unit >= ?");
       params.push(Number(req.query.minPrice));
     }
 
     if (req.query.maxPrice) {
-      filters.push("w.price_per_hour <= ?");
+      filters.push("s.price_per_unit <= ?");
       params.push(Number(req.query.maxPrice));
     }
 
     if (req.query.keyword) {
-      filters.push("(w.name LIKE ? OR w.description LIKE ?)");
+      filters.push("(s.name LIKE ? OR s.description LIKE ?)");
       params.push(`%${req.query.keyword}%`, `%${req.query.keyword}%`);
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
     const [rows] = await pool.query(
-      `SELECT w.id, w.name, w.type, w.address, w.capacity, w.price_per_hour,
-              w.description, w.lat, w.lng, w.status, w.created_at,
-              GROUP_CONCAT(wi.image_url ORDER BY wi.id SEPARATOR '||') AS image_urls,
-              SUBSTRING_INDEX(GROUP_CONCAT(wi.image_url ORDER BY wi.id SEPARATOR '||'), '||', 1) AS thumbnail_url
-       FROM workspaces w
-       LEFT JOIN workspace_images wi ON wi.workspace_id = w.id
+      `SELECT s.id, s.name, s.type, s.location, s.capacity, s.price_per_unit, s.pricing_unit,
+              s.description, s.latitude, s.longitude, s.thumbnail_url, s.created_at
+       FROM spaces s
        ${whereClause}
-       GROUP BY w.id
-       ORDER BY w.created_at DESC`,
+       ORDER BY s.created_at DESC`,
       params
     );
 
-    const data = rows.map((row) => ({
-      ...row,
-      images: row.image_urls ? row.image_urls.split("||") : [],
-      location: row.address,
-      price_per_unit: row.price_per_hour,
-      pricing_unit: "hour",
-      latitude: row.lat,
-      longitude: row.lng
-    }));
+    const baseData = rows.map((row) => formatSpaceRow(row));
+    const data = await withFavoriteState(baseData, req.user?.id);
 
-    cache.set(cacheKey, data);
+    cache.set(cacheKey, baseData);
     return res.json({ data, source: "database" });
   } catch (error) {
     return next(error);
@@ -75,51 +100,58 @@ async function getSpaceById(req, res, next) {
   try {
     const { id } = req.params;
     const [rows] = await pool.query(
-      `SELECT id, name, type, address, capacity, price_per_hour,
-              description, lat, lng, status, created_at
-       FROM workspaces WHERE id = ?`,
+      `SELECT id, name, type, location, capacity, price_per_unit, pricing_unit,
+              description, latitude, longitude, thumbnail_url, created_at
+       FROM spaces WHERE id = ?`,
       [id]
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: "Space not found" });
+      return res.status(404).json({ message: "Không tìm thấy không gian" });
     }
-
-    // Get images for workspace
-    const [images] = await pool.query(
-      `SELECT id, image_url FROM workspace_images WHERE workspace_id = ?`,
-      [id]
-    );
 
     // Get services
     const [services] = await pool.query(
-      `SELECT id, name, price, description, 'once' AS pricing_type FROM services ORDER BY name ASC`
+      `SELECT id, name, price, description, pricing_type
+       FROM services
+       WHERE is_active = 1
+       ORDER BY name ASC`
     );
 
     // Get upcoming bookings
     const [recentSlots] = await pool.query(
-      `SELECT bts.start_time AS start_at, bts.end_time AS end_at, b.status
-       FROM booking_time_slots bts
-       JOIN bookings b ON b.id = bts.booking_id
-       WHERE b.workspace_id = ?
+      `SELECT bs.start_at, bs.end_at, b.status
+       FROM booking_slots bs
+       JOIN bookings b ON b.id = bs.booking_id
+       WHERE b.space_id = ?
          AND b.status IN ('pending', 'confirmed')
-         AND bts.start_time >= NOW()
-       ORDER BY bts.start_time ASC
+         AND bs.start_at >= NOW()
+       ORDER BY bs.start_at ASC
        LIMIT 20`,
       [id]
     );
 
-    const imageList = images.map((img) => img.image_url);
+    let isFavorite = false;
+    if (req.user?.id) {
+      const [favoriteRows] = await pool.query(
+        `SELECT id FROM favorite_spaces WHERE user_id = ? AND space_id = ? LIMIT 1`,
+        [req.user.id, id]
+      );
+      isFavorite = favoriteRows.length > 0;
+    }
+
+    const imageList = rows[0].thumbnail_url ? [rows[0].thumbnail_url] : [];
 
     return res.json({
       ...rows[0],
       images: imageList,
       thumbnail_url: imageList[0] || null,
-      location: rows[0].address,
-      price_per_unit: rows[0].price_per_hour,
-      pricing_unit: "hour",
-      latitude: rows[0].lat,
-      longitude: rows[0].lng,
+      address: rows[0].location,
+      price_per_hour: rows[0].price_per_unit,
+      lat: rows[0].latitude,
+      lng: rows[0].longitude,
+      status: "available",
+      is_favorite: isFavorite,
       services,
       upcomingSlots: recentSlots
     });

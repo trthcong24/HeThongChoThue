@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/client";
 import AdminTabs from "../../components/AdminTabs";
+import { getPricingTypeLabel } from "../../utils/labels";
 
 const initialForm = {
   name: "",
@@ -39,22 +40,22 @@ function AdminServicesPage() {
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Admin panel</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quan ly dich vu</h1>
+        <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Bảng quản trị</p>
+        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý dịch vụ</h1>
       </div>
       <AdminTabs />
 
       <form onSubmit={handleSubmit} className="grid gap-4 rounded-[28px] border border-orange-100 bg-white p-6 shadow-panel md:grid-cols-2">
         <input
           className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-          placeholder="Ten dich vu"
+          placeholder="Tên dịch vụ"
           value={form.name}
           onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
         />
         <input
           type="number"
           className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-          placeholder="Gia"
+          placeholder="Giá"
           value={form.price}
           onChange={(event) => setForm((prev) => ({ ...prev, price: event.target.value }))}
         />
@@ -63,25 +64,25 @@ function AdminServicesPage() {
           value={form.pricingType}
           onChange={(event) => setForm((prev) => ({ ...prev, pricingType: event.target.value }))}
         >
-          <option value="per_booking">Theo booking</option>
-          <option value="per_slot">Theo slot</option>
+          <option value="per_booking">Theo lượt đặt</option>
+          <option value="per_slot">Theo khung giờ</option>
         </select>
         <select
           className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
           value={form.isActive ? "1" : "0"}
           onChange={(event) => setForm((prev) => ({ ...prev, isActive: event.target.value === "1" }))}
         >
-          <option value="1">Dang hoat dong</option>
-          <option value="0">Tam dung</option>
+          <option value="1">Đang hoạt động</option>
+          <option value="0">Tạm dừng</option>
         </select>
         <textarea
           className="md:col-span-2 min-h-28 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-          placeholder="Mo ta"
+          placeholder="Mô tả"
           value={form.description}
           onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
         />
         <button type="submit" className="w-fit rounded-full bg-teal-700 px-5 py-3 font-semibold text-white">
-          {editingId ? "Cap nhat dich vu" : "Them dich vu"}
+          {editingId ? "Cập nhật dịch vụ" : "Thêm dịch vụ"}
         </button>
       </form>
 
@@ -89,11 +90,11 @@ function AdminServicesPage() {
         <table className="min-w-full text-left text-sm">
           <thead className="bg-orange-50 text-slate-700">
             <tr>
-              <th className="px-4 py-3">Ten</th>
-              <th className="px-4 py-3">Gia</th>
-              <th className="px-4 py-3">Loai gia</th>
-              <th className="px-4 py-3">Trang thai</th>
-              <th className="px-4 py-3">Hanh dong</th>
+              <th className="px-4 py-3">Tên</th>
+              <th className="px-4 py-3">Giá</th>
+              <th className="px-4 py-3">Loại giá</th>
+              <th className="px-4 py-3">Trạng thái</th>
+              <th className="px-4 py-3">Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -101,8 +102,8 @@ function AdminServicesPage() {
               <tr key={service.id} className="border-t border-slate-100">
                 <td className="px-4 py-3">{service.name}</td>
                 <td className="px-4 py-3">{Number(service.price).toLocaleString()} VND</td>
-                <td className="px-4 py-3">{service.pricing_type}</td>
-                <td className="px-4 py-3">{service.is_active ? "Active" : "Inactive"}</td>
+                <td className="px-4 py-3">{getPricingTypeLabel(service.pricing_type)}</td>
+                <td className="px-4 py-3">{service.is_active ? "Đang hoạt động" : "Ngừng hoạt động"}</td>
                 <td className="flex gap-2 px-4 py-3">
                   <button
                     type="button"
@@ -118,7 +119,7 @@ function AdminServicesPage() {
                       });
                     }}
                   >
-                    Sua
+                    Sửa
                   </button>
                   <button
                     type="button"
@@ -128,7 +129,7 @@ function AdminServicesPage() {
                       await loadData();
                     }}
                   >
-                    Xoa
+                    Xóa
                   </button>
                 </td>
               </tr>

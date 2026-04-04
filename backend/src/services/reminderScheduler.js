@@ -20,8 +20,8 @@ async function pushUpcomingReminders() {
     await createNotification({
       userId: row.user_id,
       type: "reminder",
-      title: "Sap den gio thue",
-      message: `Khong gian ${row.space_name} sap den gio su dung.`,
+      title: "Sắp đến giờ thuê",
+      message: `Không gian ${row.space_name} sắp đến giờ sử dụng.`,
       metadata: {
         bookingSlotId: row.id,
         startAt: row.start_at

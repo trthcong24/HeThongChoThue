@@ -7,24 +7,24 @@ async function register(req, res, next) {
     const { fullName, email, password } = req.body;
 
     if (!fullName || !email || !password) {
-      return res.status(400).json({ message: "fullName, email, password are required" });
+      return res.status(400).json({ message: "Họ tên, email và mật khẩu là bắt buộc" });
     }
 
     const [existing] = await pool.query("SELECT id FROM users WHERE email = ?", [email]);
     if (existing.length > 0) {
-      return res.status(409).json({ message: "Email already exists" });
+      return res.status(409).json({ message: "Email đã tồn tại" });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'user')",
+      "INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, 'user')",
       [fullName, email, passwordHash]
     );
 
     const token = signToken({ id: result.insertId, email, role: "user", fullName });
 
     return res.status(201).json({
-      message: "Register success",
+      message: "Đăng ký thành công",
       token,
       user: { id: result.insertId, fullName, email, role: "user" }
     });
@@ -38,37 +38,37 @@ async function login(req, res, next) {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "email and password are required" });
+      return res.status(400).json({ message: "Email và mật khẩu là bắt buộc" });
     }
 
     const [rows] = await pool.query(
-      "SELECT id, name, email, password, role FROM users WHERE email = ?",
+      "SELECT id, full_name, email, password_hash, role FROM users WHERE email = ?",
       [email]
     );
 
     if (rows.length === 0) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
     const user = rows[0];
-    const matched = await bcrypt.compare(password, user.password);
+    const matched = await bcrypt.compare(password, user.password_hash);
     if (!matched) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
     const token = signToken({
       id: user.id,
       email: user.email,
       role: user.role,
-      fullName: user.name
+      fullName: user.full_name
     });
 
     return res.json({
-      message: "Login success",
+      message: "Đăng nhập thành công",
       token,
       user: {
         id: user.id,
-        fullName: user.name,
+        fullName: user.full_name,
         email: user.email,
         role: user.role
       }

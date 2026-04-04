@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/client";
 import AdminTabs from "../../components/AdminTabs";
+import { getSpaceTypeLabel } from "../../utils/labels";
 
 const initialForm = {
   name: "",
@@ -49,7 +50,7 @@ function AdminSpacesPage() {
           lng: form.lng ? Number(form.lng) : null,
           imageUrls: form.imageUrls.map((url) => url.trim()).filter(Boolean)
         });
-        setMessage("Cập nhật Space thành công");
+        setMessage("Cập nhật không gian thành công");
       } else {
         await api.post("/admin/spaces", {
           ...form,
@@ -59,7 +60,7 @@ function AdminSpacesPage() {
           lng: form.lng ? Number(form.lng) : null,
           imageUrls: form.imageUrls.map((url) => url.trim()).filter(Boolean)
         });
-        setMessage("Thêm Space thành công");
+        setMessage("Thêm không gian thành công");
       }
 
       setForm(initialForm);
@@ -139,13 +140,13 @@ function AdminSpacesPage() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("Bạn chắc chắn muốn xóa Space này?")) {
+    if (!window.confirm("Bạn chắc chắn muốn xóa không gian này?")) {
       return;
     }
 
     try {
       await api.delete(`/admin/spaces/${id}`);
-      setMessage("Xóa Space thành công");
+      setMessage("Xóa không gian thành công");
       await loadData();
     } catch (error) {
       setMessage(error.response?.data?.message || "Xóa Space thất bại");
@@ -156,7 +157,7 @@ function AdminSpacesPage() {
     <section className="space-y-6">
       <div>
         <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Bảng điều khiển</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý Space</h1>
+        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý không gian</h1>
       </div>
       <AdminTabs />
 
@@ -252,7 +253,7 @@ function AdminSpacesPage() {
         </label>
 
         <div className="space-y-2 md:col-span-2">
-          <p className="text-sm font-semibold text-slate-700">Ảnh Space</p>
+          <p className="text-sm font-semibold text-slate-700">Ảnh không gian</p>
           <p className="text-xs text-slate-500">
             Lưu ý: Link Pinterest/Google page không phải link ảnh trực tiếp nên thường không hiển thị. Nên dùng link kết thúc
             bằng .jpg/.png hoặc tải ảnh từ máy tính.
@@ -314,7 +315,7 @@ function AdminSpacesPage() {
         <table className="min-w-full text-left text-sm">
           <thead className="bg-orange-50 text-slate-700">
             <tr>
-              <th className="px-4 py-3">Ten</th>
+              <th className="px-4 py-3">Tên</th>
               <th className="px-4 py-3">Loại</th>
               <th className="px-4 py-3">Địa chỉ</th>
               <th className="px-4 py-3">Sức chứa</th>
@@ -327,10 +328,10 @@ function AdminSpacesPage() {
             {spaces.map((item) => (
               <tr key={item.id} className="border-t border-slate-100">
                 <td className="px-4 py-3">{item.name}</td>
-                <td className="px-4 py-3">{item.type}</td>
+                <td className="px-4 py-3">{getSpaceTypeLabel(item.type)}</td>
                 <td className="px-4 py-3">{item.address}</td>
                 <td className="px-4 py-3">{item.capacity}</td>
-                <td className="px-4 py-3">{Number(item.price_per_hour).toLocaleString()} VND/gio</td>
+                <td className="px-4 py-3">{Number(item.price_per_hour).toLocaleString()} VND/giờ</td>
                 <td className="px-4 py-3">{Array.isArray(item.images) ? item.images.length : 0}</td>
                 <td className="flex gap-2 px-4 py-3">
                   <button

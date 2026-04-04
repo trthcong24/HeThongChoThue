@@ -10,16 +10,16 @@ function AdminTabs() {
   return (
     <div className="flex flex-wrap gap-3">
       <NavLink to="/admin/spaces" className={tabClassName}>
-        Quản lý Space
+        Quản lý không gian
       </NavLink>
       <NavLink to="/admin/bookings" className={tabClassName}>
-        Quản lý Booking
+        Quản lý đặt lịch
       </NavLink>
       <NavLink to="/admin/services" className={tabClassName}>
-        Quản lý Dịch vụ
+        Quản lý dịch vụ
       </NavLink>
       <NavLink to="/admin/users" className={tabClassName}>
-        Quản lý User
+        Quản lý người dùng
       </NavLink>
     </div>
   );

@@ -3,7 +3,7 @@ const pool = require("../config/db");
 async function getMyNotifications(req, res, next) {
   try {
     const [rows] = await pool.query(
-      `SELECT id, type, title, content, is_read, created_at
+      `SELECT id, type, title, message, is_read, created_at
        FROM notifications
        WHERE user_id = ?
        ORDER BY created_at DESC
@@ -25,10 +25,10 @@ async function markNotificationRead(req, res, next) {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Notification not found" });
+      return res.status(404).json({ message: "Không tìm thấy thông báo" });
     }
 
-    return res.json({ message: "Notification updated" });
+    return res.json({ message: "Đã cập nhật thông báo" });
   } catch (error) {
     return next(error);
   }

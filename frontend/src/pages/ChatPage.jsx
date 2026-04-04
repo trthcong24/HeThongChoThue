@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api/client";
+import { getRoleLabel } from "../utils/labels";
 
 function ChatPage() {
   const [contacts, setContacts] = useState([]);
@@ -70,12 +71,12 @@ function ChatPage() {
     <section className="grid gap-8 lg:grid-cols-[320px,1fr]">
       <aside className="space-y-6 rounded-[32px] border border-orange-100 bg-white p-6 shadow-panel">
         <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Realtime chat</p>
-          <h1 className="mt-2 font-display text-3xl font-bold text-slate-900">Tin nhan</h1>
+          <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Trò chuyện thời gian thực</p>
+          <h1 className="mt-2 font-display text-3xl font-bold text-slate-900">Tin nhắn</h1>
         </div>
 
         <div className="rounded-[24px] border border-slate-200 p-4">
-          <label className="mb-2 block text-sm font-semibold text-slate-700">Bat dau chat moi</label>
+          <label className="mb-2 block text-sm font-semibold text-slate-700">Bắt đầu cuộc trò chuyện mới</label>
           <select
             className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
             value={selectedContactId}
@@ -83,7 +84,7 @@ function ChatPage() {
           >
             {contacts.map((contact) => (
               <option key={contact.id} value={contact.id}>
-                {contact.full_name} ({contact.role})
+                {contact.full_name} ({getRoleLabel(contact.role)})
               </option>
             ))}
           </select>
@@ -99,8 +100,8 @@ function ChatPage() {
                 room.id === activeRoomId ? "border-orange-200 bg-orange-50" : "border-slate-200 bg-slate-50"
               }`}
             >
-              <p className="font-semibold text-slate-900">{room.peer_name || `Room #${room.id}`}</p>
-              <p className="mt-1 text-sm text-slate-500">{room.last_message || "Chua co tin nhan"}</p>
+              <p className="font-semibold text-slate-900">{room.peer_name || `Đoạn chat #${room.id}`}</p>
+              <p className="mt-1 text-sm text-slate-500">{room.last_message || "Chưa có tin nhắn"}</p>
             </button>
           ))}
         </div>
@@ -109,7 +110,7 @@ function ChatPage() {
       <div className="flex min-h-[620px] flex-col rounded-[32px] border border-orange-100 bg-white p-6 shadow-panel">
         <div className="border-b border-slate-200 pb-4">
           <h2 className="font-display text-2xl font-semibold text-slate-900">
-            {activeRoom?.peer_name || "Chon room hoac gui tin nhan moi"}
+            {activeRoom?.peer_name || "Chọn đoạn chat hoặc gửi tin nhắn mới"}
           </h2>
         </div>
 
@@ -121,18 +122,18 @@ function ChatPage() {
               <p className="mt-2 text-xs text-slate-400">{new Date(message.created_at).toLocaleString()}</p>
             </div>
           ))}
-          {messages.length === 0 && <p className="text-sm text-slate-500">Chua co tin nhan nao.</p>}
+          {messages.length === 0 && <p className="text-sm text-slate-500">Chưa có tin nhắn nào.</p>}
         </div>
 
         <form onSubmit={sendMessage} className="flex gap-3 border-t border-slate-200 pt-4">
           <input
             className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-            placeholder="Nhap noi dung..."
+            placeholder="Nhập nội dung..."
             value={content}
             onChange={(event) => setContent(event.target.value)}
           />
           <button type="submit" className="rounded-2xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white">
-            Gui
+            Gửi
           </button>
         </form>
       </div>

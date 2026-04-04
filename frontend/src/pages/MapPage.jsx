@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api/client";
+import { getSpaceTypeLabel } from "../utils/labels";
 
 function MapPage() {
   const [markers, setMarkers] = useState([]);
@@ -40,8 +41,8 @@ function MapPage() {
   return (
     <section className="space-y-8">
       <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Map overview</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Ban do khong gian</h1>
+        <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Bản đồ tổng quan</p>
+        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Bản đồ không gian</h1>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1.2fr,0.8fr]">
@@ -62,7 +63,7 @@ function MapPage() {
         <div className="space-y-4">
           {markers.map((marker) => (
             <div key={marker.id} className="rounded-[24px] border border-orange-100 bg-white p-5 shadow-panel">
-              <p className="text-xs uppercase tracking-[0.25em] text-orange-600">{marker.type}</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-orange-600">{getSpaceTypeLabel(marker.type)}</p>
               <h3 className="mt-2 font-display text-xl font-semibold text-slate-900">{marker.name}</h3>
               <p className="mt-2 text-sm text-slate-600">{marker.location}</p>
               <p className="mt-1 text-xs text-slate-400">
