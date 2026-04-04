@@ -3,19 +3,55 @@ const cache = require("../config/cache");
 
 const SPACES_CACHE_KEY = "spaces:list";
 
+function formatSpaceRow(row) {
+  return {
+    ...row,
+    images: row.thumbnail_url ? [row.thumbnail_url] : [],
+    address: row.location,
+    price_per_hour: row.price_per_unit,
+    lat: row.latitude,
+    lng: row.longitude,
+    status: "available"
+  };
+}
+
+async function withFavoriteState(spaces, userId) {
+  const normalizedSpaces = (spaces || []).map((space) => ({
+    ...space,
+    is_favorite: Boolean(space.is_favorite)
+  }));
+
+  if (!userId || normalizedSpaces.length === 0) {
+    return normalizedSpaces;
+  }
+
+  const placeholders = normalizedSpaces.map(() => "?").join(", ");
+  const [rows] = await pool.query(
+    `SELECT space_id FROM favorite_spaces WHERE user_id = ? AND space_id IN (${placeholders})`,
+    [userId, ...normalizedSpaces.map((space) => space.id)]
+  );
+
+  const favoriteIds = new Set(rows.map((row) => Number(row.space_id)));
+  return normalizedSpaces.map((space) => ({
+    ...space,
+    is_favorite: favoriteIds.has(Number(space.id))
+  }));
+}
+
 async function getSpaces(req, res, next) {
   try {
     const cacheKey = `${SPACES_CACHE_KEY}:${JSON.stringify(req.query || {})}`;
     const cached = cache.get(cacheKey);
     if (cached) {
-      return res.json({ data: cached, source: "cache" });
+      const data = await withFavoriteState(cached, req.user?.id);
+      return res.json({ data, source: "cache" });
     }
 
     const filters = [];
     const params = [];
 
     if (req.query.type) {
-      filters.push("w.type = ?");
+      filters.push("s.type = ?");
       params.push(req.query.type);
     }
 
@@ -50,17 +86,10 @@ async function getSpaces(req, res, next) {
       params
     );
 
-    const data = rows.map((row) => ({
-      ...row,
-      images: row.thumbnail_url ? [row.thumbnail_url] : [],
-      address: row.location,
-      price_per_hour: row.price_per_unit,
-      lat: row.latitude,
-      lng: row.longitude,
-      status: "available"
-    }));
+    const baseData = rows.map((row) => formatSpaceRow(row));
+    const data = await withFavoriteState(baseData, req.user?.id);
 
-    cache.set(cacheKey, data);
+    cache.set(cacheKey, baseData);
     return res.json({ data, source: "database" });
   } catch (error) {
     return next(error);
@@ -78,7 +107,7 @@ async function getSpaceById(req, res, next) {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: "Space not found" });
+      return res.status(404).json({ message: "Không tìm thấy không gian" });
     }
 
     // Get services
@@ -102,6 +131,15 @@ async function getSpaceById(req, res, next) {
       [id]
     );
 
+    let isFavorite = false;
+    if (req.user?.id) {
+      const [favoriteRows] = await pool.query(
+        `SELECT id FROM favorite_spaces WHERE user_id = ? AND space_id = ? LIMIT 1`,
+        [req.user.id, id]
+      );
+      isFavorite = favoriteRows.length > 0;
+    }
+
     const imageList = rows[0].thumbnail_url ? [rows[0].thumbnail_url] : [];
 
     return res.json({
@@ -113,6 +151,7 @@ async function getSpaceById(req, res, next) {
       lat: rows[0].latitude,
       lng: rows[0].longitude,
       status: "available",
+      is_favorite: isFavorite,
       services,
       upcomingSlots: recentSlots
     });

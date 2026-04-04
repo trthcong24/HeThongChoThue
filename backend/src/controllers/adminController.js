@@ -47,7 +47,7 @@ async function createSpace(req, res, next) {
 
     if (!name || !type || !address || !capacity || !pricePerHour) {
       return res.status(400).json({
-        message: "name, type, address, capacity, pricePerHour are required"
+        message: "Tên, loại, địa chỉ, sức chứa và giá theo giờ là bắt buộc"
       });
     }
 
@@ -133,7 +133,7 @@ async function updateSpace(req, res, next) {
 
     if (result.affectedRows === 0) {
       await connection.rollback();
-      return res.status(404).json({ message: "Space not found" });
+      return res.status(404).json({ message: "Không tìm thấy không gian" });
     }
 
     await connection.commit();
@@ -145,7 +145,7 @@ async function updateSpace(req, res, next) {
     }
     emitToAdmins("space:changed", { action: "update", id: Number(id) });
 
-    return res.json({ message: "Space updated" });
+    return res.json({ message: "Đã cập nhật không gian" });
   } catch (error) {
     try {
       await connection.rollback();
@@ -163,7 +163,7 @@ async function deleteSpace(req, res, next) {
     const [result] = await pool.query("DELETE FROM spaces WHERE id = ?", [req.params.id]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Space not found" });
+      return res.status(404).json({ message: "Không tìm thấy không gian" });
     }
 
     invalidateSpacesCache();
@@ -173,7 +173,7 @@ async function deleteSpace(req, res, next) {
     }
     emitToAdmins("space:changed", { action: "delete", id: Number(req.params.id) });
 
-    return res.json({ message: "Space deleted" });
+    return res.json({ message: "Đã xóa không gian" });
   } catch (error) {
     return next(error);
   }
@@ -198,15 +198,15 @@ async function updateUserRole(req, res, next) {
     const { role } = req.body;
 
     if (!["admin", "user"].includes(role)) {
-      return res.status(400).json({ message: "Invalid role" });
+      return res.status(400).json({ message: "Vai trò không hợp lệ" });
     }
 
     const [result] = await pool.query("UPDATE users SET role = ? WHERE id = ?", [role, req.params.id]);
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    return res.json({ message: "User role updated" });
+    return res.json({ message: "Đã cập nhật vai trò người dùng" });
   } catch (error) {
     return next(error);
   }
@@ -226,23 +226,28 @@ async function updateBookingStatus(req, res, next) {
     const { status } = req.body;
 
     if (!["pending", "confirmed", "cancelled"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
     }
 
     const [result] = await pool.query("UPDATE bookings SET status = ? WHERE id = ?", [status, req.params.id]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Booking not found" });
+      return res.status(404).json({ message: "Không tìm thấy lịch đặt" });
     }
 
     const bookings = await loadBookings(pool, "WHERE b.id = ?", [req.params.id]);
     const booking = bookings[0];
+    const statusLabel = {
+      pending: "chờ duyệt",
+      confirmed: "đã xác nhận",
+      cancelled: "đã hủy"
+    }[status] || status;
 
     await createNotification({
       userId: booking.user_id,
       type: "booking",
-      title: "Cap nhat booking",
-      message: `Booking #${booking.id} da duoc cap nhat thanh ${status}.`,
+      title: "Cập nhật đặt lịch",
+      message: `Đặt lịch #${booking.id} đã được cập nhật thành ${statusLabel}.`,
       metadata: { bookingId: booking.id, status }
     });
 
@@ -269,7 +274,7 @@ async function createService(req, res, next) {
     const { name, price, pricingType, description, isActive } = req.body;
 
     if (!name || !price || !pricingType) {
-      return res.status(400).json({ message: "name, price, pricingType are required" });
+      return res.status(400).json({ message: "Tên, giá và loại giá là bắt buộc" });
     }
 
     const [result] = await pool.query(
@@ -295,10 +300,10 @@ async function updateService(req, res, next) {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Service not found" });
+      return res.status(404).json({ message: "Không tìm thấy dịch vụ" });
     }
 
-    return res.json({ message: "Service updated" });
+    return res.json({ message: "Đã cập nhật dịch vụ" });
   } catch (error) {
     return next(error);
   }
@@ -308,10 +313,10 @@ async function deleteService(req, res, next) {
   try {
     const [result] = await pool.query("DELETE FROM services WHERE id = ?", [req.params.id]);
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Service not found" });
+      return res.status(404).json({ message: "Không tìm thấy dịch vụ" });
     }
 
-    return res.json({ message: "Service deleted" });
+    return res.json({ message: "Đã xóa dịch vụ" });
   } catch (error) {
     return next(error);
   }
@@ -319,7 +324,7 @@ async function deleteService(req, res, next) {
 
 function uploadSpaceImage(req, res) {
   if (!req.file) {
-    return res.status(400).json({ message: "Image file is required" });
+    return res.status(400).json({ message: "Vui lòng chọn tệp ảnh" });
   }
 
   const baseUrl = `${req.protocol}://${req.get("host")}`;

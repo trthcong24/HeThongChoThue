@@ -21,7 +21,7 @@ async function createBooking(req, res, next) {
     const normalizedSlots = normalizeSlots(slots);
 
     if (!normalizedSpaceId) {
-      return res.status(400).json({ message: "spaceId is required" });
+      return res.status(400).json({ message: "spaceId là bắt buộc" });
     }
 
     assertValidSlots(normalizedSlots);
@@ -35,7 +35,7 @@ async function createBooking(req, res, next) {
 
     if (spaceRows.length === 0) {
       await connection.rollback();
-      return res.status(404).json({ message: "Space not found" });
+      return res.status(404).json({ message: "Không tìm thấy không gian" });
     }
 
     const space = spaceRows[0];
@@ -55,7 +55,7 @@ async function createBooking(req, res, next) {
 
       if (overlapRows.length > 0) {
         await connection.rollback();
-        return res.status(409).json({ message: "One or more selected time slots are already booked" });
+        return res.status(409).json({ message: "Một hoặc nhiều khung giờ đã được đặt trước" });
       }
     }
 
@@ -141,13 +141,13 @@ async function createBooking(req, res, next) {
     await createNotification({
       userId,
       title: "Đặt lịch thành công",
-      message: `Booking #${booking.id} của bạn đã được tạo và đang chờ xác nhận.`,
+      message: `Đặt lịch #${booking.id} của bạn đã được tạo và đang chờ xác nhận.`,
       type: "booking"
     });
 
     await notifyAdmins({
-      title: "Có booking mới",
-      message: `Người dùng ${booking.user_name} vừa tạo booking #${booking.id}.`,
+      title: "Có lượt đặt lịch mới",
+      message: `Người dùng ${booking.user_name} vừa tạo đặt lịch #${booking.id}.`,
       type: "booking"
     });
 
@@ -181,7 +181,7 @@ async function getMyBookingDetail(req, res, next) {
     const bookings = await loadBookings(pool, "WHERE b.id = ? AND b.user_id = ?", [req.params.id, req.user.id]);
 
     if (bookings.length === 0) {
-      return res.status(404).json({ message: "Booking not found" });
+      return res.status(404).json({ message: "Không tìm thấy lịch đặt" });
     }
 
     return res.json(bookings[0]);
@@ -199,7 +199,7 @@ async function cancelMyBooking(req, res, next) {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Booking not found or already cancelled" });
+      return res.status(404).json({ message: "Không tìm thấy lịch đặt hoặc lịch đã bị hủy" });
     }
 
     const [bookings] = await pool.query(
@@ -215,14 +215,14 @@ async function cancelMyBooking(req, res, next) {
 
     await createNotification({
       userId: req.user.id,
-      title: "Đã hủy booking",
-      message: `Booking #${booking.id} đã được hủy.`,
+      title: "Đã hủy đặt lịch",
+      message: `Đặt lịch #${booking.id} đã được hủy.`,
       type: "booking"
     });
 
     await notifyAdmins({
-      title: "Booking bị hủy",
-      message: `Booking #${booking.id} vừa bị người dùng hủy.`,
+      title: "Lượt đặt lịch bị hủy",
+      message: `Đặt lịch #${booking.id} vừa bị người dùng hủy.`,
       type: "booking"
     });
 

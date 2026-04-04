@@ -60,7 +60,7 @@ async function getRoomMessages(req, res, next) {
     );
 
     if (memberRows.length === 0) {
-      return res.status(403).json({ message: "You do not have permission" });
+      return res.status(403).json({ message: "Bạn không có quyền truy cập phòng chat này" });
     }
 
     const [messages] = await pool.query(
@@ -113,7 +113,7 @@ async function sendMessage(req, res, next) {
     const { roomId, participantId, content } = req.body;
 
     if (!content || !String(content).trim()) {
-      return res.status(400).json({ message: "content is required" });
+      return res.status(400).json({ message: "Nội dung tin nhắn là bắt buộc" });
     }
 
     await connection.beginTransaction();
@@ -128,19 +128,19 @@ async function sendMessage(req, res, next) {
 
       if (memberRows.length === 0) {
         await connection.rollback();
-        return res.status(403).json({ message: "You do not have permission" });
+        return res.status(403).json({ message: "Bạn không có quyền truy cập phòng chat này" });
       }
     } else {
       const normalizedParticipantId = Number(participantId);
       if (!normalizedParticipantId) {
         await connection.rollback();
-        return res.status(400).json({ message: "participantId is required when roomId is missing" });
+        return res.status(400).json({ message: "Cần participantId khi chưa có roomId" });
       }
 
       const [users] = await connection.query(`SELECT id FROM users WHERE id = ?`, [normalizedParticipantId]);
       if (users.length === 0) {
         await connection.rollback();
-        return res.status(404).json({ message: "Participant not found" });
+        return res.status(404).json({ message: "Không tìm thấy người nhận" });
       }
 
       targetRoomId = await findOrCreateDirectRoom(connection, senderId, normalizedParticipantId);

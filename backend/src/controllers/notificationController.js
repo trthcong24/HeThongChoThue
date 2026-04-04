@@ -25,10 +25,10 @@ async function markNotificationRead(req, res, next) {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Notification not found" });
+      return res.status(404).json({ message: "Không tìm thấy thông báo" });
     }
 
-    return res.json({ message: "Notification updated" });
+    return res.json({ message: "Đã cập nhật thông báo" });
   } catch (error) {
     return next(error);
   }

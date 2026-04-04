@@ -12,6 +12,7 @@ import BookingPage from "./pages/BookingPage";
 import MapPage from "./pages/MapPage";
 import ChatPage from "./pages/ChatPage";
 import ProfilePage from "./pages/ProfilePage";
+import FavoritesPage from "./pages/FavoritesPage";
 import AdminSpacesPage from "./pages/admin/AdminSpacesPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
@@ -57,6 +58,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/favorites"
+          element={
+            <ProtectedRoute>
+              <FavoritesPage />
             </ProtectedRoute>
           }
         />
