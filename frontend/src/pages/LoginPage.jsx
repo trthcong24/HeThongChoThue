@@ -13,8 +13,8 @@ function LoginPage() {
     setError("");
 
     try {
-      await login(form.email, form.password);
-      navigate("/");
+      const currentUser = await login(form.email, form.password);
+      navigate(currentUser?.role === "admin" ? "/admin/dashboard" : "/");
     } catch (err) {
       setError(err.response?.data?.message || "Dang nhap that bai");
     }
@@ -22,9 +22,14 @@ function LoginPage() {
 
   return (
     <section className="mx-auto max-w-xl rounded-[32px] border border-orange-100 bg-white p-8 shadow-panel">
+<<<<<<< Updated upstream
       <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Authentication</p>
       <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Dang nhap</h1>
       <p className="mt-3 text-slate-600">Tai khoan demo admin@space.com / 123456</p>
+=======
+      <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Xác thực</p>
+      <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Đăng nhập</h1>
+>>>>>>> Stashed changes
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         <input

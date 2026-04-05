@@ -18,6 +18,30 @@ async function ensureColumn(tableName, columnName, definition) {
 
 async function bootstrapData() {
   await pool.query(
+    `CREATE TABLE IF NOT EXISTS space_types (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      code VARCHAR(100) NOT NULL UNIQUE,
+      label VARCHAR(150) NOT NULL,
+      description TEXT NULL,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+  );
+
+  await pool.query(
+    `INSERT INTO space_types (code, label, description, is_active)
+     VALUES
+      ('meeting_room', 'Phòng họp', 'Không gian họp team và khách hàng.', 1),
+      ('desk', 'Bàn làm việc', 'Chỗ ngồi làm việc cá nhân hoặc nhóm nhỏ.', 1),
+      ('private_office', 'Văn phòng riêng', 'Phòng riêng cho doanh nghiệp nhỏ.', 1),
+      ('coworking', 'Khu coworking', 'Khu làm việc chia sẻ theo ngày/giờ.', 1),
+      ('creative_studio', 'Studio sáng tạo', 'Không gian workshop, chụp ảnh, ghi hình.', 1)
+     ON DUPLICATE KEY UPDATE
+      label = VALUES(label),
+      description = COALESCE(space_types.description, VALUES(description))`
+  );
+
+  await pool.query(
     `CREATE TABLE IF NOT EXISTS users (
       id INT AUTO_INCREMENT PRIMARY KEY,
       full_name VARCHAR(150) NOT NULL,
@@ -82,6 +106,14 @@ async function bootstrapData() {
       longitude DECIMAL(10,7) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`
+  );
+
+  await pool.query(
+    `INSERT INTO space_types (code, label, is_active)
+     SELECT DISTINCT s.type, s.type, 1
+     FROM spaces s
+     LEFT JOIN space_types st ON st.code = s.type
+     WHERE st.id IS NULL`
   );
 
   await ensureColumn("spaces", "type", "VARCHAR(100) NOT NULL DEFAULT 'meeting_room'");

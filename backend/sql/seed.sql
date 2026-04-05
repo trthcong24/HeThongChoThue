@@ -1,8 +1,13 @@
 USE space_rental;
 
--- Demo users are auto-created by backend bootstrap on first run:
--- admin@space.com / 123456
--- user@space.com / 123456
+INSERT INTO space_types (code, label, description, is_active)
+VALUES
+  ('meeting_room', 'Phong hop', 'Khong gian hop team va khach hang.', 1),
+  ('desk', 'Ban lam viec', 'Cho ngoi lam viec ca nhan hoac nhom nho.', 1),
+  ('private_office', 'Van phong rieng', 'Phong rieng cho doanh nghiep nho.', 1),
+  ('coworking', 'Khu coworking', 'Khu lam viec chia se theo ngay/gio.', 1),
+  ('creative_studio', 'Studio sang tao', 'Khong gian workshop, chup anh, ghi hinh.', 1)
+ON DUPLICATE KEY UPDATE label = VALUES(label);
 
 INSERT INTO spaces (name, type, location, capacity, price_per_unit, pricing_unit, thumbnail_url, description, latitude, longitude)
 VALUES

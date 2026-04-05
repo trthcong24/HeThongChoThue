@@ -2,9 +2,15 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
+const clientOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173,http://localhost:5174")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 module.exports = {
   port: Number(process.env.PORT || 5000),
-  clientOrigin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+  clientOrigin: clientOrigins[0] || "http://localhost:5173",
+  clientOrigins,
   db: {
     host: process.env.DB_HOST || "localhost",
     port: Number(process.env.DB_PORT || 3306),

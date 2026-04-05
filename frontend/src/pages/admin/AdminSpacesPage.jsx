@@ -17,14 +17,30 @@ const initialForm = {
 
 function AdminSpacesPage() {
   const [spaces, setSpaces] = useState([]);
+  const [spaceTypes, setSpaceTypes] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
 
   async function loadData() {
-    const response = await api.get("/admin/spaces");
-    setSpaces(response.data);
+    const [spacesResponse, spaceTypesResponse] = await Promise.all([
+      api.get("/admin/spaces"),
+      api.get("/admin/space-types")
+    ]);
+    setSpaces(spacesResponse.data);
+    setSpaceTypes(spaceTypesResponse.data);
+
+    setForm((prev) => {
+      if (prev.type) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        type: spaceTypesResponse.data[0]?.code || "meeting_room"
+      };
+    });
   }
 
   useEffect(() => {
@@ -155,13 +171,18 @@ function AdminSpacesPage() {
   return (
     <section className="space-y-6">
       <div>
+<<<<<<< Updated upstream
         <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Bảng điều khiển</p>
         <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý Space</h1>
+=======
+        <p className="text-sm uppercase tracking-[0.3em] text-slate-500">Trung tâm quản trị</p>
+        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý không gian</h1>
+>>>>>>> Stashed changes
       </div>
       <AdminTabs />
 
-      <form className="grid gap-4 rounded-[28px] border border-orange-100 bg-white p-6 shadow-panel md:grid-cols-2" onSubmit={handleSubmit}>
-        <div className="rounded-2xl border border-orange-100 bg-orange-50/70 px-4 py-3 text-sm text-slate-700 md:col-span-2">
+      <form className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-6 shadow-panel md:grid-cols-2" onSubmit={handleSubmit}>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 md:col-span-2">
           <p className="font-semibold text-slate-900">Lưu ý nhập liệu</p>
           <p className="mt-1">Các trường có dấu <span className="text-red-600">*</span> là bắt buộc.</p>
         </div>
@@ -183,9 +204,11 @@ function AdminSpacesPage() {
             value={form.type}
             onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
           >
-            <option value="meeting_room">Phòng họp</option>
-            <option value="desk">Bàn làm việc</option>
-            <option value="private_office">Văn phòng riêng</option>
+            {spaceTypes.map((type) => (
+              <option key={type.id} value={type.code}>
+                {type.label}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -310,9 +333,9 @@ function AdminSpacesPage() {
 
       {message && <p className="text-sm font-semibold text-emerald-700">{message}</p>}
 
-      <div className="overflow-x-auto rounded-[28px] border border-orange-100 bg-white shadow-panel">
+      <div className="overflow-x-auto rounded-[28px] border border-slate-200 bg-white shadow-panel">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-orange-50 text-slate-700">
+          <thead className="bg-slate-50 text-slate-700">
             <tr>
               <th className="px-4 py-3">Ten</th>
               <th className="px-4 py-3">Loại</th>
@@ -327,7 +350,11 @@ function AdminSpacesPage() {
             {spaces.map((item) => (
               <tr key={item.id} className="border-t border-slate-100">
                 <td className="px-4 py-3">{item.name}</td>
+<<<<<<< Updated upstream
                 <td className="px-4 py-3">{item.type}</td>
+=======
+                <td className="px-4 py-3">{item.type_label || getSpaceTypeLabel(item.type)}</td>
+>>>>>>> Stashed changes
                 <td className="px-4 py-3">{item.address}</td>
                 <td className="px-4 py-3">{item.capacity}</td>
                 <td className="px-4 py-3">{Number(item.price_per_hour).toLocaleString()} VND/gio</td>

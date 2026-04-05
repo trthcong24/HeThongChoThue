@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import api from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 
+const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace("/api", "");
+
 function ProfilePage() {
   const { refreshUser } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -20,6 +22,26 @@ function ProfilePage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  async function handleAvatarUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    try {
+      const response = await api.post("/users/avatar", formData);
+      setProfile(response.data);
+      refreshUser(response.data);
+      setMessage("Cập nhật ảnh đại diện thành công");
+      event.target.value = "";
+      setTimeout(() => setMessage(""), 3000);
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Lỗi tải ảnh");
+      setTimeout(() => setMessage(""), 3000);
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -45,6 +67,28 @@ function ProfilePage() {
           <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Tai khoan cua ban</h1>
         </div>
 
+        <div className="space-y-3">
+          <div className="flex items-center gap-4">
+            <img
+              src={profile.avatar_url ? `${BACKEND_URL}${profile.avatar_url}` : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop"}
+              alt="Avatar"
+              className="h-20 w-20 rounded-full object-cover"
+            />
+            <div>
+              <label className="block cursor-pointer rounded-2xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                Chọn ảnh từ máy tính
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </label>
+              <p className="mt-2 text-xs text-slate-500">Tối đa 5MB, định dạng JPG, PNG</p>
+            </div>
+          </div>
+        </div>
+
         <input
           className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
           value={profile.full_name || ""}
@@ -61,12 +105,15 @@ function ProfilePage() {
           onChange={(event) => setProfile((prev) => ({ ...prev, phone: event.target.value }))}
           placeholder="So dien thoai"
         />
+<<<<<<< Updated upstream
         <input
           className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
           value={profile.avatar_url || ""}
           onChange={(event) => setProfile((prev) => ({ ...prev, avatar_url: event.target.value }))}
           placeholder="Avatar URL"
         />
+=======
+>>>>>>> Stashed changes
         <button type="submit" className="rounded-full bg-orange-600 px-6 py-3 font-semibold text-white">
           Luu thay doi
         </button>

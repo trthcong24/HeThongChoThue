@@ -28,8 +28,12 @@ function HomePage() {
             Dat phong hop, ban lam viec va coworking nhanh theo gio hoac theo ngay.
           </h1>
           <p className="max-w-2xl text-lg text-slate-600">
+<<<<<<< Updated upstream
             SpaceFlow gom Web API RESTful, JWT, MySQL, Socket.io realtime, chat luu lich su va he
             thong thong bao de xu ly booking ro rang cho ca user va admin.
+=======
+            Nền tảng đặt không gian linh hoạt theo giờ hoặc theo ngày với hệ thống quản lý, chat trực tiếp và thông báo tức thời.
+>>>>>>> Stashed changes
           </p>
           <div className="flex flex-wrap gap-4">
             <Link to="/spaces" className="rounded-full bg-orange-600 px-6 py-3 font-semibold text-white">

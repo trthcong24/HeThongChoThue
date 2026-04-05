@@ -19,6 +19,8 @@ export function AuthProvider({ children }) {
     setToken(data.token);
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
+
+    return data.user;
   }
 
   async function register(fullName, email, password) {
@@ -29,6 +31,8 @@ export function AuthProvider({ children }) {
     setToken(data.token);
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
+
+    return data.user;
   }
 
   function logout() {

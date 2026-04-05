@@ -2,6 +2,8 @@ import { Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import UserOnlyRoute from "./components/UserOnlyRoute";
+import NonAdminRoute from "./components/NonAdminRoute";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -16,6 +18,8 @@ import AdminSpacesPage from "./pages/admin/AdminSpacesPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminServicesPage from "./pages/admin/AdminServicesPage";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminSpaceTypesPage from "./pages/admin/AdminSpaceTypesPage";
 
 function App() {
   return (
@@ -24,7 +28,14 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/spaces" element={<SpacesPage />} />
         <Route path="/spaces/:id" element={<SpaceDetailPage />} />
-        <Route path="/map" element={<MapPage />} />
+        <Route
+          path="/map"
+          element={
+            <NonAdminRoute>
+              <MapPage />
+            </NonAdminRoute>
+          }
+        />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
@@ -32,7 +43,9 @@ function App() {
           path="/booking/:spaceId"
           element={
             <ProtectedRoute>
-              <BookingPage />
+              <UserOnlyRoute>
+                <BookingPage />
+              </UserOnlyRoute>
             </ProtectedRoute>
           }
         />
@@ -40,7 +53,9 @@ function App() {
           path="/my-bookings"
           element={
             <ProtectedRoute>
-              <MyBookingsPage />
+              <UserOnlyRoute>
+                <MyBookingsPage />
+              </UserOnlyRoute>
             </ProtectedRoute>
           }
         />
@@ -48,7 +63,9 @@ function App() {
           path="/chat"
           element={
             <ProtectedRoute>
-              <ChatPage />
+              <UserOnlyRoute>
+                <ChatPage />
+              </UserOnlyRoute>
             </ProtectedRoute>
           }
         />
@@ -58,6 +75,36 @@ function App() {
             <ProtectedRoute>
               <ProfilePage />
             </ProtectedRoute>
+          }
+        />
+<<<<<<< Updated upstream
+=======
+        <Route
+          path="/favorites"
+          element={
+            <ProtectedRoute>
+              <UserOnlyRoute>
+                <FavoritesPage />
+              </UserOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+>>>>>>> Stashed changes
+
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboardPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <AdminDashboardPage />
+            </AdminRoute>
           }
         />
 
@@ -74,6 +121,14 @@ function App() {
           element={
             <AdminRoute>
               <AdminServicesPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/space-types"
+          element={
+            <AdminRoute>
+              <AdminSpaceTypesPage />
             </AdminRoute>
           }
         />

@@ -1,4 +1,28 @@
+const path = require("path");
 const pool = require("../config/db");
+
+async function uploadAvatar(req, res, next) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Vui lòng chọn một ảnh" });
+    }
+
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    await pool.query(
+      "UPDATE users SET avatar_url = ? WHERE id = ?",
+      [avatarUrl, req.user.id]
+    );
+
+    const [rows] = await pool.query(
+      "SELECT id, full_name, email, role, phone, avatar_url, created_at FROM users WHERE id = ?",
+      [req.user.id]
+    );
+
+    return res.json(rows[0]);
+  } catch (error) {
+    return next(error);
+  }
+}
 
 async function getProfile(req, res, next) {
   try {
@@ -58,6 +82,7 @@ async function getTransactionHistory(req, res, next) {
 }
 
 module.exports = {
+  uploadAvatar,
   getProfile,
   updateProfile,
   getTransactionHistory
