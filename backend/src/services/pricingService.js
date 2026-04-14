@@ -5,12 +5,20 @@ function assertValidSlots(slots) {
     throw error;
   }
 
+  const now = new Date();
+
   for (const slot of slots) {
     const startDate = new Date(slot.startAt);
     const endDate = new Date(slot.endAt);
 
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
-      const error = new Error("Invalid booking time range");
+      const error = new Error("Khung giờ đặt lịch không hợp lệ");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (startDate <= now) {
+      const error = new Error("Không thể đặt lịch cho thời gian trong quá khứ");
       error.statusCode = 400;
       throw error;
     }

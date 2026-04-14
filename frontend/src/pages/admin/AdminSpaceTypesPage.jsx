@@ -31,11 +31,12 @@ function AdminSpaceTypesPage() {
     try {
       if (editingId) {
         await api.put(`/admin/space-types/${editingId}`, {
+          code: form.code,
           label: form.label,
           description: form.description,
           isActive: form.isActive
         });
-        setMessage("Cập nhật loại không gian thành công");
+        setMessage("Cập nhật dòng xe thành công");
       } else {
         await api.post("/admin/space-types", {
           code: form.code,
@@ -43,7 +44,7 @@ function AdminSpaceTypesPage() {
           description: form.description,
           isActive: form.isActive
         });
-        setMessage("Thêm loại không gian thành công");
+        setMessage("Thêm dòng xe thành công");
       }
 
       setForm(initialForm);
@@ -61,7 +62,7 @@ function AdminSpaceTypesPage() {
 
     try {
       await api.delete(`/admin/space-types/${item.id}`);
-      setMessage("Đã xóa loại không gian");
+      setMessage("Đã xóa dòng xe");
       await loadData();
     } catch (error) {
       setMessage(error.response?.data?.message || "Xóa thất bại");
@@ -82,7 +83,7 @@ function AdminSpaceTypesPage() {
     <section className="space-y-6">
       <div>
         <p className="text-sm uppercase tracking-[0.3em] text-slate-500">Trung tâm quản trị</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý loại không gian</h1>
+        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý dòng xe</h1>
       </div>
       <AdminTabs />
 
@@ -94,7 +95,7 @@ function AdminSpaceTypesPage() {
             placeholder="vi_du: podcast_room"
             value={form.code}
             onChange={(event) => setForm((prev) => ({ ...prev, code: event.target.value }))}
-            disabled={Boolean(editingId)}
+            required
           />
         </label>
 
@@ -155,7 +156,7 @@ function AdminSpaceTypesPage() {
               <th className="px-4 py-3">Mã</th>
               <th className="px-4 py-3">Tên</th>
               <th className="px-4 py-3">Mô tả</th>
-              <th className="px-4 py-3">Số không gian</th>
+              <th className="px-4 py-3">Số xe</th>
               <th className="px-4 py-3">Trạng thái</th>
               <th className="px-4 py-3">Hành động</th>
             </tr>

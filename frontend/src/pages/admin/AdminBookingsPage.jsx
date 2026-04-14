@@ -26,8 +26,8 @@ function AdminBookingsPage() {
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Admin panel</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quan ly Bookings</h1>
+        <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Quản trị</p>
+        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý đặt lịch</h1>
       </div>
       <AdminTabs />
 
@@ -50,7 +50,7 @@ function AdminBookingsPage() {
 
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <div className="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-600">
-                <p className="font-semibold text-slate-900">Slots</p>
+                <p className="font-semibold text-slate-900">Khung giờ</p>
                 <div className="mt-3 space-y-2">
                   {item.slots.map((slot) => (
                     <div key={slot.id}>
@@ -61,9 +61,9 @@ function AdminBookingsPage() {
               </div>
 
               <div className="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-600">
-                <p className="font-semibold text-slate-900">Dich vu</p>
+                <p className="font-semibold text-slate-900">Dịch vụ</p>
                 <div className="mt-3 space-y-2">
-                  {item.services.length === 0 && <p>Khong co dich vu them.</p>}
+                  {item.services.length === 0 && <p>Không có dịch vụ thêm.</p>}
                   {item.services.map((service) => (
                     <div key={service.service_id}>
                       {service.name} x{service.quantity} - {Number(service.total_price).toLocaleString()} VND
@@ -79,21 +79,21 @@ function AdminBookingsPage() {
                 onClick={() => changeStatus(item.id, "confirmed")}
                 className="rounded-full bg-teal-700 px-4 py-2 text-sm font-semibold text-white"
               >
-                Xac nhan
+                Xác nhận
               </button>
               <button
                 type="button"
                 onClick={() => changeStatus(item.id, "cancelled")}
                 className="rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-600"
               >
-                Huy
+                Hủy
               </button>
               <button
                 type="button"
                 onClick={() => changeStatus(item.id, "pending")}
                 className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
               >
-                Cho duyet
+                Chờ duyệt
               </button>
             </div>
           </article>

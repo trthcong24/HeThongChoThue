@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import api from "../api/client";
+import { getSpaceTypeLabel } from "../utils/labels";
+import PageHeader from "../components/PageHeader";
 
 const FALLBACK_CENTER = { lat: 10.7769, lng: 106.7009 };
 
@@ -26,11 +29,22 @@ const spaceMarkerIcon = L.icon({
   shadowAnchor: [16, 52]
 });
 
-function MapPage() {
+const MapPage = () => {
+  const [searchParams] = useSearchParams();
   const [markers, setMarkers] = useState([]);
+  const [rentalCode, setRentalCode] = useState(searchParams.get("rentalCode") || "");
+
+  const loadMarkers = async (code) => {
+    const params = {};
+    if (code && code.trim()) {
+      params.rentalCode = code.trim();
+    }
+    const response = await api.get("/map", { params });
+    setMarkers(response.data);
+  };
 
   useEffect(() => {
-    api.get("/map").then((response) => setMarkers(response.data));
+    loadMarkers(rentalCode);
   }, []);
 
   const mapMarkers = useMemo(
@@ -38,6 +52,7 @@ function MapPage() {
       markers
         .map((marker) => ({
           ...marker,
+          location: marker.location || marker.address || "-",
           lat: Number(marker.latitude),
           lng: Number(marker.longitude)
         }))
@@ -68,8 +83,34 @@ function MapPage() {
   return (
     <section className="space-y-8">
       <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Map overview</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Ban do khong gian</h1>
+        <PageHeader eyebrow="Vehicle map overview" title="Bản đồ vị trí xe" />
+        <form
+          className="mt-4 flex flex-wrap items-center gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            loadMarkers(rentalCode);
+          }}
+        >
+          <input
+            value={rentalCode}
+            onChange={(event) => setRentalCode(event.target.value)}
+            placeholder="Nhập mã thuê xe (ví dụ: RENT-12)"
+            className="w-full max-w-md rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+          />
+          <button type="submit" className="rounded-full bg-teal-700 px-5 py-3 text-sm font-semibold text-white">
+            Tìm vị trí theo mã thuê
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRentalCode("");
+              loadMarkers("");
+            }}
+            className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700"
+          >
+            Xem toàn bộ xe
+          </button>
+        </form>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1.2fr,0.8fr]">
@@ -93,7 +134,8 @@ function MapPage() {
                     </p>
                     <p className="text-sm font-semibold text-slate-900">{marker.name}</p>
                     <p className="text-xs text-slate-600">{marker.location}</p>
-                    <Link className="text-xs font-semibold text-teal-700" to={`/spaces/${marker.id}`}>
+                    {marker.rental_code && <p className="text-xs font-semibold text-teal-700">{marker.rental_code}</p>}
+                    <Link className="text-xs font-semibold text-teal-700" to={`/vehicles/${marker.id}`}>
                       Xem chi tiết
                     </Link>
                   </div>
@@ -109,10 +151,11 @@ function MapPage() {
               <p className="text-xs uppercase tracking-[0.25em] text-orange-600">{marker.type}</p>
               <h3 className="mt-2 font-display text-xl font-semibold text-slate-900">{marker.name}</h3>
               <p className="mt-2 text-sm text-slate-600">{marker.location}</p>
+              {marker.rental_code && <p className="mt-1 text-xs font-semibold text-teal-700">{marker.rental_code}</p>}
               <p className="mt-1 text-xs text-slate-400">
                 {marker.lat}, {marker.lng}
               </p>
-              <Link className="mt-3 inline-block text-sm font-semibold text-teal-700" to={`/spaces/${marker.id}`}>
+              <Link className="mt-3 inline-block text-sm font-semibold text-teal-700" to={`/vehicles/${marker.id}`}>
                 Đi đến chi tiết
               </Link>
             </div>
@@ -121,6 +164,6 @@ function MapPage() {
       </div>
     </section>
   );
-}
+};
 
 export default MapPage;

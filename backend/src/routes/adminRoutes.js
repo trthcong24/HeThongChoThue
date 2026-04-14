@@ -33,6 +33,11 @@ router.post("/spaces", createSpace);
 router.post("/spaces/upload-image", upload.single("image"), uploadSpaceImage);
 router.put("/spaces/:id", updateSpace);
 router.delete("/spaces/:id", deleteSpace);
+router.get("/vehicles", getAllSpaces);
+router.post("/vehicles", createSpace);
+router.post("/vehicles/upload-image", upload.single("image"), uploadSpaceImage);
+router.put("/vehicles/:id", updateSpace);
+router.delete("/vehicles/:id", deleteSpace);
 
 router.get("/space-types", getSpaceTypes);
 router.post("/space-types", createSpaceType);

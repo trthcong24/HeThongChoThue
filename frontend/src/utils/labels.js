@@ -1,9 +1,9 @@
 export const SPACE_TYPE_LABELS = {
-  meeting_room: "Phòng họp",
-  desk: "Bàn làm việc",
-  coworking: "Khu coworking",
-  creative_studio: "Studio sáng tạo",
-  private_office: "Văn phòng riêng"
+  meeting_room: "SUV",
+  desk: "Sedan",
+  coworking: "Hatchback",
+  creative_studio: "Luxury",
+  private_office: "Pickup"
 };
 
 export const PRICING_UNIT_LABELS = {

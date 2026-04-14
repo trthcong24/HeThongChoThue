@@ -35,6 +35,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/spaces", spaceRoutes);
+app.use("/api/vehicles", spaceRoutes);
 app.use("/api/workspaces", spaceRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chat", chatRoutes);

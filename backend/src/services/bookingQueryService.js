@@ -39,6 +39,7 @@ async function loadBookings(executor, whereClause = "", params = []) {
 
   return bookings.map((booking) => ({
     ...booking,
+    rental_code: `RENT-${booking.id}`,
     slots: slots.filter((slot) => slot.booking_id === booking.id),
     services: services.filter((service) => service.booking_id === booking.id)
   }));

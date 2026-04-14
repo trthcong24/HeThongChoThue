@@ -64,7 +64,7 @@ async function createSpace(req, res, next) {
 
     const [validTypes] = await connection.query("SELECT code FROM space_types WHERE code = ? AND is_active = 1 LIMIT 1", [type]);
     if (validTypes.length === 0) {
-      return res.status(400).json({ message: "Loại không gian không hợp lệ hoặc đã ngừng hoạt động" });
+      return res.status(400).json({ message: "Dòng xe không hợp lệ hoặc đã ngừng hoạt động" });
     }
 
     await connection.beginTransaction();
@@ -128,7 +128,7 @@ async function updateSpace(req, res, next) {
 
     const [validTypes] = await connection.query("SELECT code FROM space_types WHERE code = ? LIMIT 1", [type]);
     if (validTypes.length === 0) {
-      return res.status(400).json({ message: "Loại không gian không hợp lệ" });
+      return res.status(400).json({ message: "Dòng xe không hợp lệ" });
     }
 
     await connection.beginTransaction();
@@ -190,7 +190,7 @@ async function deleteSpace(req, res, next) {
 
     if (bookingCount.total > 0) {
       return res.status(409).json({ 
-        message: "Không thể xóa không gian vì còn có người đang thuê" 
+        message: "Không thể xóa xe vì còn có người đang thuê" 
       });
     }
 
@@ -232,15 +232,20 @@ async function updateUserRole(req, res, next) {
     const { role } = req.body;
 
     if (!["admin", "user"].includes(role)) {
-      return res.status(400).json({ message: "Invalid role" });
+      return res.status(400).json({ message: "Vai trò không hợp lệ" });
+    }
+
+    // Prevent admin from demoting themselves
+    if (Number(req.params.id) === req.user.id && role !== "admin") {
+      return res.status(403).json({ message: "Không thể tự hạ quyền của chính mình" });
     }
 
     const [result] = await pool.query("UPDATE users SET role = ? WHERE id = ?", [role, req.params.id]);
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    return res.json({ message: "User role updated" });
+    return res.json({ message: "Đã cập nhật vai trò người dùng" });
   } catch (error) {
     return next(error);
   }
@@ -260,23 +265,43 @@ async function updateBookingStatus(req, res, next) {
     const { status } = req.body;
 
     if (!["pending", "confirmed", "cancelled"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+    }
+
+    // State-machine: only allow valid transitions
+    const [[current]] = await pool.query("SELECT status, user_id FROM bookings WHERE id = ?", [req.params.id]);
+    if (!current) {
+      return res.status(404).json({ message: "Không tìm thấy đặt lịch" });
+    }
+
+    const validTransitions = {
+      pending: ["confirmed", "cancelled"],
+      confirmed: ["cancelled"],
+      cancelled: []
+    };
+
+    if (!validTransitions[current.status].includes(status)) {
+      return res.status(409).json({
+        message: `Không thể chuyển trạng thái từ "${current.status}" sang "${status}"`
+      });
     }
 
     const [result] = await pool.query("UPDATE bookings SET status = ? WHERE id = ?", [status, req.params.id]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Booking not found" });
+      return res.status(404).json({ message: "Không tìm thấy đặt lịch" });
     }
 
     const bookings = await loadBookings(pool, "WHERE b.id = ?", [req.params.id]);
     const booking = bookings[0];
 
+    const statusLabel = { pending: "Chờ xác nhận", confirmed: "Đã xác nhận", cancelled: "Đã hủy" };
+
     await createNotification({
       userId: booking.user_id,
       type: "booking",
-      title: "Cap nhat booking",
-      message: `Booking #${booking.id} da duoc cap nhat thanh ${status}.`,
+      title: "Cập nhật đặt lịch",
+      message: `Đặt lịch #${booking.id} đã được cập nhật thành "${statusLabel[status] || status}".`,
       metadata: { bookingId: booking.id, status }
     });
 
@@ -439,12 +464,12 @@ async function createSpaceType(req, res, next) {
     const normalizedCode = normalizeTypeCode(code || label);
 
     if (!label || !normalizedCode) {
-      return res.status(400).json({ message: "Tên loại không gian là bắt buộc" });
+      return res.status(400).json({ message: "Tên dòng xe là bắt buộc" });
     }
 
     const [exists] = await pool.query("SELECT id FROM space_types WHERE code = ? LIMIT 1", [normalizedCode]);
     if (exists.length > 0) {
-      return res.status(409).json({ message: "Mã loại không gian đã tồn tại" });
+      return res.status(409).json({ message: "Mã dòng xe đã tồn tại" });
     }
 
     const [result] = await pool.query(
@@ -460,27 +485,75 @@ async function createSpaceType(req, res, next) {
 }
 
 async function updateSpaceType(req, res, next) {
-  try {
-    const { label, description, isActive } = req.body;
+  const connection = await pool.getConnection();
 
-    if (!label || !String(label).trim()) {
-      return res.status(400).json({ message: "Tên loại không gian là bắt buộc" });
+  try {
+    const { code, label, description, isActive } = req.body;
+    const normalizedCode = normalizeTypeCode(code || label);
+
+    if (!label || !String(label).trim() || !normalizedCode) {
+      return res.status(400).json({ message: "Mã và tên dòng xe là bắt buộc" });
     }
 
-    const [result] = await pool.query(
+    const [rows] = await connection.query(
+      `SELECT id, code, label
+       FROM space_types
+       WHERE id = ?
+       LIMIT 1`,
+      [req.params.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy dòng xe" });
+    }
+
+    const current = rows[0];
+    if (normalizedCode !== current.code) {
+      const [exists] = await connection.query(
+        `SELECT id FROM space_types WHERE code = ? AND id <> ? LIMIT 1`,
+        [normalizedCode, req.params.id]
+      );
+
+      if (exists.length > 0) {
+        return res.status(409).json({ message: "Mã dòng xe đã tồn tại" });
+      }
+    }
+
+    await connection.beginTransaction();
+
+    const [result] = await connection.query(
       `UPDATE space_types
-       SET label = ?, description = ?, is_active = ?
+       SET code = ?, label = ?, description = ?, is_active = ?
        WHERE id = ?`,
-      [String(label).trim(), description || null, isActive === false ? 0 : 1, req.params.id]
+      [normalizedCode, String(label).trim(), description || null, isActive === false ? 0 : 1, req.params.id]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Không tìm thấy loại không gian" });
+      await connection.rollback();
+      return res.status(404).json({ message: "Không tìm thấy dòng xe" });
     }
 
-    return res.json({ message: "Đã cập nhật loại không gian" });
+    if (normalizedCode !== current.code) {
+      await connection.query(
+        `UPDATE spaces
+         SET type = ?
+         WHERE type = ?`,
+        [normalizedCode, current.code]
+      );
+    }
+
+    await connection.commit();
+
+    return res.json({ message: "Đã cập nhật dòng xe" });
   } catch (error) {
+    try {
+      await connection.rollback();
+    } catch (_rollbackError) {
+      // no-op
+    }
     return next(error);
+  } finally {
+    connection.release();
   }
 }
 
@@ -488,17 +561,17 @@ async function deleteSpaceType(req, res, next) {
   try {
     const [rows] = await pool.query("SELECT id, code FROM space_types WHERE id = ? LIMIT 1", [req.params.id]);
     if (rows.length === 0) {
-      return res.status(404).json({ message: "Không tìm thấy loại không gian" });
+      return res.status(404).json({ message: "Không tìm thấy dòng xe" });
     }
 
     const typeCode = rows[0].code;
     const [[spacesUsingType]] = await pool.query("SELECT COUNT(*) AS total FROM spaces WHERE type = ?", [typeCode]);
     if (Number(spacesUsingType.total) > 0) {
-      return res.status(409).json({ message: "Không thể xóa vì vẫn còn không gian đang dùng loại này" });
+      return res.status(409).json({ message: "Không thể xóa vì vẫn còn xe đang dùng dòng này" });
     }
 
     await pool.query("DELETE FROM space_types WHERE id = ?", [req.params.id]);
-    return res.json({ message: "Đã xóa loại không gian" });
+    return res.json({ message: "Đã xóa dòng xe" });
   } catch (error) {
     return next(error);
   }

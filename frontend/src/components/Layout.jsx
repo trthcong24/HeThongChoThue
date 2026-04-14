@@ -23,54 +23,21 @@ function Layout({ children }) {
         <header className="sticky top-0 z-30 border-b border-slate-700 bg-slate-900/95 text-white backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-8">
             <Link to="/admin/dashboard" className="font-display text-2xl font-bold tracking-tight text-white">
-              SpaceFlow Admin
+              AutoFlow Admin
             </Link>
 
-<<<<<<< Updated upstream
-          <nav className="flex flex-wrap items-center gap-2 rounded-full bg-white/50 p-2 shadow-sm">
-            <NavLink to="/" className={navClassName}>
-              Home
-            </NavLink>
-            <NavLink to="/spaces" className={navClassName}>
-              Không gian
-            </NavLink>
-            <NavLink to="/map" className={navClassName}>
-              Bản đồ
-            </NavLink>
-            {isAuthenticated && (
-              <NavLink to="/chat" className={navClassName}>
-                Chat
-              </NavLink>
-            )}
-            {isAuthenticated && (
-              <NavLink to="/my-bookings" className={navClassName}>
-                Booking
-              </NavLink>
-            )}
-            {isAuthenticated && (
-              <NavLink to="/profile" className={navClassName}>
-                Profile
-              </NavLink>
-            )}
-            {isAdmin && (
-              <NavLink to="/admin/spaces" className={navClassName}>
-                Admin
-              </NavLink>
-            )}
-          </nav>
-=======
             <nav className="flex flex-wrap items-center gap-2 rounded-full bg-slate-800 p-2 shadow-sm">
               <NavLink to="/admin/dashboard" className={adminNavClassName}>
                 Dashboard
               </NavLink>
-              <NavLink to="/admin/spaces" className={adminNavClassName}>
-                Không gian
+              <NavLink to="/admin/vehicles" className={adminNavClassName}>
+                Xe
               </NavLink>
               <NavLink to="/admin/space-types" className={adminNavClassName}>
-                Loại không gian
+                Dòng xe
               </NavLink>
               <NavLink to="/admin/bookings" className={adminNavClassName}>
-                Đặt lịch
+                Đơn thuê
               </NavLink>
               <NavLink to="/admin/services" className={adminNavClassName}>
                 Dịch vụ
@@ -78,8 +45,10 @@ function Layout({ children }) {
               <NavLink to="/admin/users" className={adminNavClassName}>
                 Người dùng
               </NavLink>
+              <NavLink to="/chat" className={adminNavClassName}>
+                Chat hỗ trợ
+              </NavLink>
             </nav>
->>>>>>> Stashed changes
 
             <div className="flex flex-wrap items-center gap-3">
               <div className="rounded-full border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-100 shadow-sm">
@@ -99,15 +68,15 @@ function Layout({ children }) {
         <header className="sticky top-0 z-30 border-b border-white/50 bg-white/70 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-8">
             <Link to="/" className="font-display text-2xl font-bold tracking-tight text-slate-900">
-              SpaceFlow
+              AutoFlow
             </Link>
 
             <nav className="flex flex-wrap items-center gap-2 rounded-full bg-white/50 p-2 shadow-sm">
               <NavLink to="/" className={navClassName}>
                 Trang chủ
               </NavLink>
-              <NavLink to="/spaces" className={navClassName}>
-                Không gian
+              <NavLink to="/vehicles" className={navClassName}>
+                Xe cho thuê
               </NavLink>
               <NavLink to="/map" className={navClassName}>
                 Bản đồ
@@ -119,7 +88,7 @@ function Layout({ children }) {
               )}
               {isAuthenticated && (
                 <NavLink to="/my-bookings" className={navClassName}>
-                  Đặt lịch
+                  Đơn thuê
                 </NavLink>
               )}
               {isAuthenticated && (

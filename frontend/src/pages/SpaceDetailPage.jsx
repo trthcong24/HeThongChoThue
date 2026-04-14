@@ -7,14 +7,14 @@ function SpaceDetailPage() {
   const [space, setSpace] = useState(null);
 
   useEffect(() => {
-    api.get(`/workspaces/${id}`).then((response) => setSpace(response.data));
+    api.get(`/vehicles/${id}`).then((response) => setSpace(response.data));
   }, [id]);
 
   if (!space) {
-    return <p className="text-sm text-slate-500">Dang tai chi tiet khong gian...</p>;
+    return <p className="text-sm text-slate-500">Đang tải chi tiết xe...</p>;
   }
 
-  const imageSrc = space.thumbnail_url || (Array.isArray(space.images) ? space.images[0] : "") || "https://via.placeholder.com/1200x700?text=Workspace";
+  const imageSrc = space.thumbnail_url || (Array.isArray(space.images) ? space.images[0] : "") || "https://via.placeholder.com/1200x700?text=Vehicle";
 
   return (
     <section className="space-y-8">
@@ -25,7 +25,7 @@ function SpaceDetailPage() {
             src={imageSrc}
             alt={space.name}
             onError={(event) => {
-              event.currentTarget.src = "https://via.placeholder.com/1200x700?text=Workspace";
+              event.currentTarget.src = "https://via.placeholder.com/1200x700?text=Vehicle";
             }}
           />
         </div>
@@ -36,22 +36,22 @@ function SpaceDetailPage() {
           <p className="mt-4 text-slate-600">{space.description}</p>
 
           <div className="mt-6 grid gap-4 rounded-[28px] bg-orange-50 p-5 text-sm text-slate-700">
-            <p>Dia diem: {space.location}</p>
-            <p>Suc chua: {space.capacity} nguoi</p>
+            <p>Vị trí xe: {space.location}</p>
+            <p>Số chỗ: {space.capacity} người</p>
             <p>
-              Don gia: {Number(space.price_per_unit).toLocaleString()} VND/{space.pricing_unit}
+              Đơn giá thuê: {Number(space.price_per_unit).toLocaleString()} VND/{space.pricing_unit}
             </p>
             <p>
-              Toa do: {space.latitude || "-"}, {space.longitude || "-"}
+              Tọa độ: {space.latitude || "-"}, {space.longitude || "-"}
             </p>
           </div>
 
           <div className="mt-6 flex gap-3">
-            <Link to={`/booking/${space.id}`} className="rounded-full bg-teal-700 px-5 py-3 font-semibold text-white">
-              Dat lich
+            <Link to={`/booking/vehicle/${space.id}`} className="rounded-full bg-teal-700 px-5 py-3 font-semibold text-white">
+              Đặt thuê xe
             </Link>
             <Link to="/map" className="rounded-full border border-slate-200 px-5 py-3 font-semibold text-slate-700">
-              Xem tren ban do
+              Xem trên bản đồ
             </Link>
           </div>
         </div>
@@ -59,7 +59,7 @@ function SpaceDetailPage() {
 
       <div className="grid gap-8 lg:grid-cols-2">
         <section className="rounded-[28px] border border-orange-100 bg-white p-6 shadow-panel">
-          <h2 className="font-display text-2xl font-semibold text-slate-900">Dich vu di kem</h2>
+          <h2 className="font-display text-2xl font-semibold text-slate-900">Dịch vụ đi kèm</h2>
           <div className="mt-4 space-y-3">
             {space.services.map((service) => (
               <div key={service.id} className="rounded-2xl border border-slate-200 p-4">
@@ -78,13 +78,13 @@ function SpaceDetailPage() {
         </section>
 
         <section className="rounded-[28px] border border-orange-100 bg-white p-6 shadow-panel">
-          <h2 className="font-display text-2xl font-semibold text-slate-900">Khung gio sap toi</h2>
+          <h2 className="font-display text-2xl font-semibold text-slate-900">Khung giờ sắp tới</h2>
           <div className="mt-4 space-y-3">
-            {space.upcomingSlots.length === 0 && <p className="text-sm text-slate-500">Chua co lich sap toi.</p>}
+            {space.upcomingSlots.length === 0 && <p className="text-sm text-slate-500">Chưa có lịch sắp tới.</p>}
             {space.upcomingSlots.map((slot, index) => (
               <div key={`${slot.start_at}-${index}`} className="rounded-2xl border border-slate-200 p-4">
                 <p className="font-semibold text-slate-900">{new Date(slot.start_at).toLocaleString()}</p>
-                <p className="text-sm text-slate-500">Den {new Date(slot.end_at).toLocaleString()}</p>
+                <p className="text-sm text-slate-500">Đến {new Date(slot.end_at).toLocaleString()}</p>
                 <p className="mt-1 text-xs uppercase tracking-[0.2em] text-orange-600">{slot.status}</p>
               </div>
             ))}

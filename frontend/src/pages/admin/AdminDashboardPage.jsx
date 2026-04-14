@@ -69,7 +69,7 @@ function AdminDashboardPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard title="Tổng người dùng" value={summary.totals.users.toLocaleString()} />
-            <StatCard title="Tổng không gian" value={summary.totals.spaces.toLocaleString()} />
+            <StatCard title="Tổng xe" value={summary.totals.spaces.toLocaleString()} />
             <StatCard title="Tổng đơn đặt" value={summary.totals.bookings.toLocaleString()} />
             <StatCard
               title="Doanh thu đã xác nhận"
@@ -95,7 +95,7 @@ function AdminDashboardPage() {
             </article>
 
             <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Phân bố loại không gian</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Phân bố dòng xe</h2>
               <div className="mt-4">
                 <HorizontalBars
                   items={(summary.spaceDistribution || []).map((item) => ({

@@ -4,7 +4,7 @@ import AdminTabs from "../../components/AdminTabs";
 
 const initialForm = {
   name: "",
-  type: "meeting_room",
+  type: "",
   address: "",
   capacity: "",
   pricePerHour: "",
@@ -15,7 +15,7 @@ const initialForm = {
   imageUrls: [""]
 };
 
-function AdminSpacesPage() {
+const AdminSpacesPage = () => {
   const [spaces, setSpaces] = useState([]);
   const [spaceTypes, setSpaceTypes] = useState([]);
   const [form, setForm] = useState(initialForm);
@@ -23,25 +23,24 @@ function AdminSpacesPage() {
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  async function loadData() {
+  const loadData = async () => {
     const [spacesResponse, spaceTypesResponse] = await Promise.all([
-      api.get("/admin/spaces"),
+      api.get("/admin/vehicles"),
       api.get("/admin/space-types")
     ]);
     setSpaces(spacesResponse.data);
     setSpaceTypes(spaceTypesResponse.data);
 
     setForm((prev) => {
-      if (prev.type) {
-        return prev;
-      }
+      const activeTypeCodes = (spaceTypesResponse.data || []).map((typeItem) => typeItem.code);
+      const hasValidType = prev.type && activeTypeCodes.includes(prev.type);
 
       return {
         ...prev,
-        type: spaceTypesResponse.data[0]?.code || "meeting_room"
+        type: hasValidType ? prev.type : (spaceTypesResponse.data[0]?.code || "")
       };
     });
-  }
+  };
 
   useEffect(() => {
     loadData();
@@ -51,13 +50,18 @@ function AdminSpacesPage() {
     return () => window.removeEventListener("space:refresh", refreshHandler);
   }, []);
 
-  async function handleSubmit(event) {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage("");
 
+    if (!form.type) {
+      setMessage("Vui lòng tạo và kích hoạt ít nhất một dòng xe trước khi thêm xe mới");
+      return;
+    }
+
     try {
       if (editingId) {
-        await api.put(`/admin/spaces/${editingId}`, {
+        await api.put(`/admin/vehicles/${editingId}`, {
           ...form,
           capacity: Number(form.capacity),
           pricePerHour: Number(form.pricePerHour),
@@ -65,9 +69,9 @@ function AdminSpacesPage() {
           lng: form.lng ? Number(form.lng) : null,
           imageUrls: form.imageUrls.map((url) => url.trim()).filter(Boolean)
         });
-        setMessage("Cập nhật Space thành công");
+        setMessage("Cập nhật xe thành công");
       } else {
-        await api.post("/admin/spaces", {
+        await api.post("/admin/vehicles", {
           ...form,
           capacity: Number(form.capacity),
           pricePerHour: Number(form.pricePerHour),
@@ -75,10 +79,10 @@ function AdminSpacesPage() {
           lng: form.lng ? Number(form.lng) : null,
           imageUrls: form.imageUrls.map((url) => url.trim()).filter(Boolean)
         });
-        setMessage("Thêm Space thành công");
+        setMessage("Thêm xe thành công");
       }
 
-      setForm(initialForm);
+      setForm((prev) => ({ ...initialForm, type: prev.type }));
       setEditingId(null);
       await loadData();
     } catch (error) {
@@ -86,7 +90,7 @@ function AdminSpacesPage() {
     }
   }
 
-  function handleEdit(space) {
+  const handleEdit = (space) => {
     setEditingId(space.id);
     setForm({
       name: space.name,
@@ -102,7 +106,7 @@ function AdminSpacesPage() {
     });
   }
 
-  function handleImageChange(index, value) {
+  const handleImageChange = (index, value) => {
     setForm((prev) => {
       const nextImages = [...prev.imageUrls];
       nextImages[index] = value;
@@ -110,18 +114,18 @@ function AdminSpacesPage() {
     });
   }
 
-  function addImageInput() {
+  const addImageInput = () => {
     setForm((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, ""] }));
   }
 
-  function removeImageInput(index) {
+  const removeImageInput = (index) => {
     setForm((prev) => {
       const nextImages = prev.imageUrls.filter((_, i) => i !== index);
       return { ...prev, imageUrls: nextImages.length > 0 ? nextImages : [""] };
     });
   }
 
-  async function handleUploadFromComputer(event) {
+  const handleUploadFromComputer = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) {
       return;
@@ -133,7 +137,7 @@ function AdminSpacesPage() {
       for (const file of files) {
         const formData = new FormData();
         formData.append("image", file);
-        const response = await api.post("/admin/spaces/upload-image", formData, {
+        const response = await api.post("/admin/vehicles/upload-image", formData, {
           headers: {
             "Content-Type": "multipart/form-data"
           }
@@ -154,30 +158,25 @@ function AdminSpacesPage() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("Bạn chắc chắn muốn xóa Space này?")) {
+  const handleDelete = async (id) => {
+    if (!window.confirm("Bạn chắc chắn muốn xóa xe này?")) {
       return;
     }
 
     try {
-      await api.delete(`/admin/spaces/${id}`);
-      setMessage("Xóa Space thành công");
+      await api.delete(`/admin/vehicles/${id}`);
+      setMessage("Xóa xe thành công");
       await loadData();
     } catch (error) {
-      setMessage(error.response?.data?.message || "Xóa Space thất bại");
+      setMessage(error.response?.data?.message || "Xóa xe thất bại");
     }
   }
 
   return (
     <section className="space-y-6">
       <div>
-<<<<<<< Updated upstream
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-600">Bảng điều khiển</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý Space</h1>
-=======
         <p className="text-sm uppercase tracking-[0.3em] text-slate-500">Trung tâm quản trị</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý không gian</h1>
->>>>>>> Stashed changes
+        <h1 className="mt-2 font-display text-4xl font-bold text-slate-900">Quản lý xe cho thuê</h1>
       </div>
       <AdminTabs />
 
@@ -188,7 +187,7 @@ function AdminSpacesPage() {
         </div>
 
         <label className="space-y-2">
-          <span className="text-sm font-semibold text-slate-700">Tên không gian <span className="text-red-600">*</span></span>
+          <span className="text-sm font-semibold text-slate-700">Tên xe <span className="text-red-600">*</span></span>
           <input
             className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
             value={form.name}
@@ -198,12 +197,15 @@ function AdminSpacesPage() {
         </label>
 
         <label className="space-y-2">
-          <span className="text-sm font-semibold text-slate-700">Loại không gian <span className="text-red-600">*</span></span>
+          <span className="text-sm font-semibold text-slate-700">Dòng xe <span className="text-red-600">*</span></span>
           <select
             className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
             value={form.type}
             onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
+            required
+            disabled={spaceTypes.length === 0}
           >
+            {spaceTypes.length === 0 && <option value="">Không có dòng xe đang hoạt động</option>}
             {spaceTypes.map((type) => (
               <option key={type.id} value={type.code}>
                 {type.label}
@@ -223,7 +225,7 @@ function AdminSpacesPage() {
         </label>
 
         <label className="space-y-2">
-          <span className="text-sm font-semibold text-slate-700">Sức chứa <span className="text-red-600">*</span></span>
+          <span className="text-sm font-semibold text-slate-700">Số chỗ <span className="text-red-600">*</span></span>
           <input
             className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
             type="number"
@@ -275,7 +277,7 @@ function AdminSpacesPage() {
         </label>
 
         <div className="space-y-2 md:col-span-2">
-          <p className="text-sm font-semibold text-slate-700">Ảnh Space</p>
+          <p className="text-sm font-semibold text-slate-700">Ảnh xe</p>
           <p className="text-xs text-slate-500">
             Lưu ý: Link Pinterest/Google page không phải link ảnh trực tiếp nên thường không hiển thị. Nên dùng link kết thúc
             bằng .jpg/.png hoặc tải ảnh từ máy tính.
@@ -350,11 +352,7 @@ function AdminSpacesPage() {
             {spaces.map((item) => (
               <tr key={item.id} className="border-t border-slate-100">
                 <td className="px-4 py-3">{item.name}</td>
-<<<<<<< Updated upstream
-                <td className="px-4 py-3">{item.type}</td>
-=======
-                <td className="px-4 py-3">{item.type_label || getSpaceTypeLabel(item.type)}</td>
->>>>>>> Stashed changes
+                <td className="px-4 py-3">{item.type_label || item.type}</td>
                 <td className="px-4 py-3">{item.address}</td>
                 <td className="px-4 py-3">{item.capacity}</td>
                 <td className="px-4 py-3">{Number(item.price_per_hour).toLocaleString()} VND/gio</td>

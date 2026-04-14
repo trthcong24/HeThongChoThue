@@ -14,6 +14,7 @@ import BookingPage from "./pages/BookingPage";
 import MapPage from "./pages/MapPage";
 import ChatPage from "./pages/ChatPage";
 import ProfilePage from "./pages/ProfilePage";
+import FavoritesPage from "./pages/FavoritesPage";
 import AdminSpacesPage from "./pages/admin/AdminSpacesPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
@@ -26,6 +27,8 @@ function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/vehicles" element={<SpacesPage />} />
+        <Route path="/vehicles/:id" element={<SpaceDetailPage />} />
         <Route path="/spaces" element={<SpacesPage />} />
         <Route path="/spaces/:id" element={<SpaceDetailPage />} />
         <Route
@@ -39,6 +42,16 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
+        <Route
+          path="/booking/vehicle/:vehicleId"
+          element={
+            <ProtectedRoute>
+              <UserOnlyRoute>
+                <BookingPage />
+              </UserOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/booking/:spaceId"
           element={
@@ -63,9 +76,7 @@ function App() {
           path="/chat"
           element={
             <ProtectedRoute>
-              <UserOnlyRoute>
-                <ChatPage />
-              </UserOnlyRoute>
+              <ChatPage />
             </ProtectedRoute>
           }
         />
@@ -77,8 +88,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-<<<<<<< Updated upstream
-=======
         <Route
           path="/favorites"
           element={
@@ -89,7 +98,6 @@ function App() {
             </ProtectedRoute>
           }
         />
->>>>>>> Stashed changes
 
         <Route
           path="/admin"
@@ -108,6 +116,14 @@ function App() {
           }
         />
 
+        <Route
+          path="/admin/vehicles"
+          element={
+            <AdminRoute>
+              <AdminSpacesPage />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/admin/spaces"
           element={

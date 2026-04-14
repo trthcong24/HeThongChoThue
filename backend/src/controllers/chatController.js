@@ -6,6 +6,52 @@ function toDirectKey(a, b) {
   return `${first}:${second}`;
 }
 
+async function getUserById(executor, userId) {
+  const [rows] = await executor.query(
+    `SELECT id, full_name, role FROM users WHERE id = ? LIMIT 1`,
+    [Number(userId)]
+  );
+  return rows[0] || null;
+}
+
+async function getDirectRoomPeerRole(executor, roomId, userId) {
+  const [rows] = await executor.query(
+    `SELECT r.id, r.room_type, peer.user_id AS peer_id, u.role AS peer_role
+     FROM chat_rooms r
+     JOIN chat_room_members me ON me.room_id = r.id AND me.user_id = ?
+     JOIN chat_room_members peer ON peer.room_id = r.id AND peer.user_id <> ?
+     JOIN users u ON u.id = peer.user_id
+     WHERE r.id = ?
+     LIMIT 1`,
+    [userId, userId, roomId]
+  );
+
+  return rows[0] || null;
+}
+
+async function assertPrivateRoomPermission(executor, roomId, currentUser) {
+  const room = await getDirectRoomPeerRole(executor, roomId, currentUser.id);
+  if (!room) {
+    const error = new Error("You do not have permission");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (room.room_type !== "direct") {
+    const error = new Error("Only private direct rooms are supported");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (currentUser.role === "user" && room.peer_role !== "admin") {
+    const error = new Error("User can only chat privately with admin");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return room;
+}
+
 async function getChatContacts(req, res, next) {
   try {
     const isAdmin = req.user.role === "admin";
@@ -28,21 +74,31 @@ async function getChatContacts(req, res, next) {
 
 async function getMyRooms(req, res, next) {
   try {
+    const whereForRole = req.user.role === "user" ? "AND u.role = 'admin'" : "";
     const [rows] = await pool.query(
       `SELECT r.id,
-              MAX(cm.created_at) AS room_created_at,
-              MAX(m.created_at) AS last_message_at,
-              SUBSTRING_INDEX(GROUP_CONCAT(m.content ORDER BY m.created_at DESC SEPARATOR '||'), '||', 1) AS last_message,
-              MAX(CASE WHEN cm.user_id <> ? THEN u.full_name END) AS peer_name
-       FROM chat_room_members crm
-       JOIN chat_rooms r ON r.id = crm.room_id
-       LEFT JOIN chat_messages m ON m.room_id = r.id
-       LEFT JOIN chat_room_members cm ON cm.room_id = r.id
-       LEFT JOIN users u ON u.id = cm.user_id
-       WHERE crm.user_id = ?
-       GROUP BY r.id
-       ORDER BY COALESCE(MAX(m.created_at), MAX(cm.created_at)) DESC`,
-      [req.user.id, req.user.id]
+              r.created_at AS room_created_at,
+              last_message.created_at AS last_message_at,
+              last_message.content AS last_message,
+              u.id AS peer_id,
+              u.full_name AS peer_name,
+              u.role AS peer_role
+       FROM chat_room_members me
+       JOIN chat_rooms r ON r.id = me.room_id
+       JOIN chat_room_members peer ON peer.room_id = r.id AND peer.user_id <> me.user_id
+       JOIN users u ON u.id = peer.user_id
+       LEFT JOIN chat_messages last_message ON last_message.id = (
+         SELECT m2.id
+         FROM chat_messages m2
+         WHERE m2.room_id = r.id
+         ORDER BY m2.created_at DESC
+         LIMIT 1
+       )
+       WHERE me.user_id = ?
+         AND r.room_type = 'direct'
+         ${whereForRole}
+       ORDER BY COALESCE(last_message.created_at, r.created_at) DESC`,
+      [req.user.id]
     );
 
     return res.json(rows);
@@ -54,14 +110,7 @@ async function getMyRooms(req, res, next) {
 async function getRoomMessages(req, res, next) {
   try {
     const roomId = Number(req.params.roomId);
-    const [memberRows] = await pool.query(
-      `SELECT id FROM chat_room_members WHERE room_id = ? AND user_id = ?`,
-      [roomId, req.user.id]
-    );
-
-    if (memberRows.length === 0) {
-      return res.status(403).json({ message: "You do not have permission" });
-    }
+    await assertPrivateRoomPermission(pool, roomId, req.user);
 
     const [messages] = await pool.query(
       `SELECT m.id, m.room_id, m.sender_id, m.content, m.created_at, u.full_name AS sender_name
@@ -121,15 +170,7 @@ async function sendMessage(req, res, next) {
     let targetRoomId = Number(roomId) || null;
 
     if (targetRoomId) {
-      const [memberRows] = await connection.query(
-        `SELECT id FROM chat_room_members WHERE room_id = ? AND user_id = ?`,
-        [targetRoomId, senderId]
-      );
-
-      if (memberRows.length === 0) {
-        await connection.rollback();
-        return res.status(403).json({ message: "You do not have permission" });
-      }
+      await assertPrivateRoomPermission(connection, targetRoomId, req.user);
     } else {
       const normalizedParticipantId = Number(participantId);
       if (!normalizedParticipantId) {
@@ -137,10 +178,25 @@ async function sendMessage(req, res, next) {
         return res.status(400).json({ message: "participantId is required when roomId is missing" });
       }
 
-      const [users] = await connection.query(`SELECT id FROM users WHERE id = ?`, [normalizedParticipantId]);
-      if (users.length === 0) {
+      if (normalizedParticipantId === senderId) {
+        await connection.rollback();
+        return res.status(400).json({ message: "Không thể tự chat với chính mình" });
+      }
+
+      const participant = await getUserById(connection, normalizedParticipantId);
+      if (!participant) {
         await connection.rollback();
         return res.status(404).json({ message: "Participant not found" });
+      }
+
+      if (req.user.role === "user" && participant.role !== "admin") {
+        await connection.rollback();
+        return res.status(403).json({ message: "User chỉ được chat riêng với admin" });
+      }
+
+      if (req.user.role === "admin" && participant.role !== "user") {
+        await connection.rollback();
+        return res.status(403).json({ message: "Admin chỉ được mở phòng riêng với user" });
       }
 
       targetRoomId = await findOrCreateDirectRoom(connection, senderId, normalizedParticipantId);

@@ -11,53 +11,54 @@ function normalizeSlots(slots) {
   }));
 }
 
+function normalizeSpaceIds(body) {
+  const ids = [];
+
+  if (Array.isArray(body.spaceIds)) {
+    ids.push(...body.spaceIds);
+  }
+
+  ids.push(body.spaceId || body.workspaceId);
+
+  return [...new Set(ids.map((id) => Number(id)).filter(Boolean))];
+}
+
 async function createBooking(req, res, next) {
   const connection = await pool.getConnection();
 
   try {
     const userId = req.user.id;
-    const { spaceId, workspaceId, slots, serviceIds, note } = req.body;
-    const normalizedSpaceId = Number(spaceId || workspaceId);
+    const { slots, serviceIds, note } = req.body;
+    const normalizedSpaceIds = normalizeSpaceIds(req.body);
     const normalizedSlots = normalizeSlots(slots);
 
-    if (!normalizedSpaceId) {
-      return res.status(400).json({ message: "spaceId is required" });
+    if (normalizedSpaceIds.length === 0) {
+      return res.status(400).json({ message: "Cần chọn ít nhất 1 xe để đặt" });
+    }
+
+    if (normalizedSpaceIds.length > 5) {
+      return res.status(400).json({ message: "Mỗi lần thuê chỉ được chọn tối đa 5 xe" });
     }
 
     assertValidSlots(normalizedSlots);
 
     await connection.beginTransaction();
 
+    const spacePlaceholders = normalizedSpaceIds.map(() => "?").join(", ");
     const [spaceRows] = await connection.query(
-      `SELECT id, name, pricing_unit, price_per_unit FROM spaces WHERE id = ?`,
-      [normalizedSpaceId]
+      `SELECT id, name, pricing_unit, price_per_unit
+       FROM spaces
+       WHERE id IN (${spacePlaceholders})
+       FOR UPDATE`,
+      normalizedSpaceIds
     );
 
-    if (spaceRows.length === 0) {
+    if (spaceRows.length !== normalizedSpaceIds.length) {
       await connection.rollback();
-      return res.status(404).json({ message: "Space not found" });
+      return res.status(404).json({ message: "Có xe không tồn tại hoặc đã bị xóa" });
     }
 
-    const space = spaceRows[0];
-
-    for (const slot of normalizedSlots) {
-      const [overlapRows] = await connection.query(
-        `SELECT bs.id
-         FROM booking_slots bs
-         JOIN bookings b ON b.id = bs.booking_id
-         WHERE b.space_id = ?
-           AND b.status IN ('pending', 'confirmed')
-           AND bs.start_at < ?
-           AND bs.end_at > ?
-         LIMIT 1`,
-        [normalizedSpaceId, slot.endAt, slot.startAt]
-      );
-
-      if (overlapRows.length > 0) {
-        await connection.rollback();
-        return res.status(409).json({ message: "One or more selected time slots are already booked" });
-      }
-    }
+    const spaces = normalizedSpaceIds.map((spaceId) => spaceRows.find((space) => Number(space.id) === Number(spaceId)));
 
     const normalizedServiceIds = [...new Set((serviceIds || []).map((id) => Number(id)).filter(Boolean))];
     let selectedServices = [];
@@ -72,89 +73,133 @@ async function createBooking(req, res, next) {
       selectedServices = services;
     }
 
-    let slotsTotalPrice = 0;
-    const slotDetails = normalizedSlots.map((slot) => {
-      const pricing = calculateSlotPrice(space.pricing_unit, space.price_per_unit, slot.startAt, slot.endAt);
-      slotsTotalPrice += pricing.slotPrice;
-      return {
-        startAt: slot.startAt,
-        endAt: slot.endAt,
-        unitCount: pricing.quantity,
-        slotPrice: pricing.slotPrice
-      };
-    });
+    const createdBookingIds = [];
 
-    let servicesTotalPrice = 0;
-    const bookingServiceRows = selectedServices.map((service) => {
-      const quantity = service.pricing_type === "per_slot" ? slotDetails.length : 1;
-      const totalPrice = Number(service.price) * quantity;
-      servicesTotalPrice += totalPrice;
+    for (const space of spaces) {
+      for (const slot of normalizedSlots) {
+        const [overlapRows] = await connection.query(
+          `SELECT bs.id
+           FROM booking_slots bs
+           JOIN bookings b ON b.id = bs.booking_id
+           WHERE b.space_id = ?
+             AND b.status IN ('pending', 'confirmed')
+             AND bs.start_at < ?
+             AND bs.end_at > ?
+           LIMIT 1`,
+          [space.id, slot.endAt, slot.startAt]
+        );
 
-      return {
-        serviceId: service.id,
-        quantity,
-        unitPrice: Number(service.price),
-        totalPrice
-      };
-    });
+        if (overlapRows.length > 0) {
+          await connection.rollback();
+          return res.status(409).json({ message: `Xe ${space.name} đã được đặt trong khung giờ đã chọn` });
+        }
+      }
 
-    const totalPrice = slotsTotalPrice + servicesTotalPrice;
+      let slotsTotalPrice = 0;
+      const slotDetails = normalizedSlots.map((slot) => {
+        const pricing = calculateSlotPrice(space.pricing_unit, space.price_per_unit, slot.startAt, slot.endAt);
+        slotsTotalPrice += pricing.slotPrice;
+        return {
+          startAt: slot.startAt,
+          endAt: slot.endAt,
+          unitCount: pricing.quantity,
+          slotPrice: pricing.slotPrice
+        };
+      });
 
-    const [bookingResult] = await connection.query(
-      `INSERT INTO bookings (user_id, space_id, status, note, total_amount, service_amount)
-       VALUES (?, ?, 'pending', ?, ?, ?)`,
-      [userId, normalizedSpaceId, note || null, totalPrice, servicesTotalPrice]
-    );
+      let servicesTotalPrice = 0;
+      const bookingServiceRows = selectedServices.map((service) => {
+        const quantity = service.pricing_type === "per_slot" ? slotDetails.length : 1;
+        const totalPrice = Number(service.price) * quantity;
+        servicesTotalPrice += totalPrice;
 
-    const bookingId = bookingResult.insertId;
+        return {
+          serviceId: service.id,
+          quantity,
+          unitPrice: Number(service.price),
+          totalPrice
+        };
+      });
 
-    for (const slotDetail of slotDetails) {
-      await connection.query(
-        `INSERT INTO booking_slots (booking_id, start_at, end_at, unit_count, slot_price)
-         VALUES (?, ?, ?, ?, ?)`,
-        [bookingId, slotDetail.startAt, slotDetail.endAt, slotDetail.unitCount, slotDetail.slotPrice]
+      const totalPrice = slotsTotalPrice + servicesTotalPrice;
+
+      const [bookingResult] = await connection.query(
+        `INSERT INTO bookings (user_id, space_id, status, note, total_amount, service_amount)
+         VALUES (?, ?, 'pending', ?, ?, ?)`,
+        [userId, space.id, note || null, totalPrice, servicesTotalPrice]
       );
-    }
 
-    for (const serviceRow of bookingServiceRows) {
-      await connection.query(
-        `INSERT INTO booking_services (booking_id, service_id, quantity, unit_price, total_price)
-         VALUES (?, ?, ?, ?, ?)`,
-        [bookingId, serviceRow.serviceId, serviceRow.quantity, serviceRow.unitPrice, serviceRow.totalPrice]
-      );
+      const bookingId = bookingResult.insertId;
+      createdBookingIds.push(bookingId);
+
+      for (const slotDetail of slotDetails) {
+        await connection.query(
+          `INSERT INTO booking_slots (booking_id, start_at, end_at, unit_count, slot_price)
+           VALUES (?, ?, ?, ?, ?)`,
+          [bookingId, slotDetail.startAt, slotDetail.endAt, slotDetail.unitCount, slotDetail.slotPrice]
+        );
+      }
+
+      for (const serviceRow of bookingServiceRows) {
+        await connection.query(
+          `INSERT INTO booking_services (booking_id, service_id, quantity, unit_price, total_price)
+           VALUES (?, ?, ?, ?, ?)`,
+          [bookingId, serviceRow.serviceId, serviceRow.quantity, serviceRow.unitPrice, serviceRow.totalPrice]
+        );
+      }
     }
 
     await connection.commit();
 
+    const bookingPlaceholders = createdBookingIds.map(() => "?").join(", ");
     const [bookings] = await connection.query(
       `SELECT b.id, b.user_id, b.total_amount, s.name AS space_name, u.full_name AS user_name
        FROM bookings b
        JOIN spaces s ON s.id = b.space_id
        JOIN users u ON u.id = b.user_id
-       WHERE b.id = ?`,
-      [bookingId]
+       WHERE b.id IN (${bookingPlaceholders})
+       ORDER BY b.id ASC`,
+      createdBookingIds
     );
 
-    const booking = bookings[0];
+    const rentalCodeList = bookings.map((item) => `RENT-${item.id}`);
 
     // Send notifications
     await createNotification({
       userId,
-      title: "Đặt lịch thành công",
-      message: `Booking #${booking.id} của bạn đã được tạo và đang chờ xác nhận.`,
+      title: "Đặt xe thành công",
+      message: `Bạn đã tạo ${bookings.length} đơn thuê xe. Mã thuê: ${rentalCodeList.join(", ")}.`,
       type: "booking"
     });
 
     await notifyAdmins({
-      title: "Có booking mới",
-      message: `Người dùng ${booking.user_name} vừa tạo booking #${booking.id}.`,
+      title: "Có đơn thuê xe mới",
+      message: `Người dùng ${bookings[0].user_name} vừa tạo ${bookings.length} đơn thuê xe.`,
       type: "booking"
     });
 
-    emitToAdmins("booking:created", booking);
-    emitToUser(userId, "booking:created", booking);
+    for (const booking of bookings) {
+      const payload = {
+        ...booking,
+        rental_code: `RENT-${booking.id}`
+      };
+      emitToAdmins("booking:created", payload);
+      emitToUser(userId, "booking:created", payload);
+    }
 
-    return res.status(201).json(booking);
+    if (bookings.length === 1) {
+      return res.status(201).json({
+        ...bookings[0],
+        rental_code: `RENT-${bookings[0].id}`
+      });
+    }
+
+    return res.status(201).json({
+      rentalCodeGroup: `GRP-${Date.now()}`,
+      totalVehicles: bookings.length,
+      bookingIds: bookings.map((item) => item.id),
+      rentalCodes: rentalCodeList
+    });
   } catch (error) {
     try {
       await connection.rollback();
@@ -194,12 +239,12 @@ async function cancelMyBooking(req, res, next) {
   try {
     const [result] = await pool.query(
       `UPDATE bookings SET status = 'cancelled'
-       WHERE id = ? AND user_id = ? AND status != 'cancelled'`,
+       WHERE id = ? AND user_id = ? AND status = 'pending'`,
       [req.params.id, req.user.id]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Booking not found or already cancelled" });
+      return res.status(404).json({ message: "Không tìm thấy đặt lịch hoặc đặt lịch không thể hủy (chỉ hủy được khi đang chờ xác nhận)" });
     }
 
     const [bookings] = await pool.query(

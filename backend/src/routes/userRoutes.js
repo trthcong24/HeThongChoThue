@@ -1,8 +1,5 @@
 const express = require("express");
 const { requireAuth } = require("../middlewares/auth");
-<<<<<<< Updated upstream
-const { getProfile, updateProfile, getTransactionHistory } = require("../controllers/userController");
-=======
 const upload = require("../middlewares/upload");
 const {
   uploadAvatar,
@@ -13,7 +10,6 @@ const {
   addFavoriteSpace,
   removeFavoriteSpace
 } = require("../controllers/userController");
->>>>>>> Stashed changes
 
 const router = express.Router();
 
@@ -32,5 +28,8 @@ router.post("/avatar", (req, res, next) => {
 router.get("/profile", getProfile);
 router.patch("/profile", updateProfile);
 router.get("/transactions", getTransactionHistory);
+router.get("/favorites", getFavoriteSpaces);
+router.post("/favorites", addFavoriteSpace);
+router.delete("/favorites/:spaceId", removeFavoriteSpace);
 
 module.exports = router;
